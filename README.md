@@ -18,7 +18,7 @@ apache/nginx의 복잡한 기능을 가지고 있지 않지만, ProxyPass와 유
 3. conf 경로 생성된 ROOT 인증서 확인(*.cer)
 4. cer 파일을 더블클릭하여 시스템에 ROOT 인증서 설치(구글링-ROOT 인증서 설치)
 5. 로컬 hosts 파일에서 도메인 변경( ex. 127.0.0.1 foo.com, 127.0.0.1 foo2.com)
-6. conf/proxypass.properties 파일을 열서 원하는 URL 패턴에 따른 서버 분기 설정(로컬/원격 관계없음)
+6. conf/proxypass.properties - URL 패턴에 따른 서버 분기 설정(로컬/원격 관계없음)
 7. 브라우저에서 https://foo.com 접속 (실시간으로 foo.com 인증서 생성)
 8. 브라우저에서 https://foo2.com 접속 (실시간으로 foo2.com 인증서 생성)
 
