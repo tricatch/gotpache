@@ -1,0 +1,56 @@
+plugins {
+    id 'java'
+}
+
+group 'tricatch'
+version '0.1.0'
+
+repositories {
+    mavenCentral()
+}
+
+jar {
+    manifest {
+        attributes 'Main-Class': 'tricatch.gotpache.ProxyPassServer'
+    }
+}
+
+task copyAllDependencies(type: Copy) {
+    dependsOn(jar)
+    from "${buildDir}/libs"
+    from configurations.compileClasspath
+    into "${buildDir}/dist/libs"
+}
+
+task copyAllProerties(type: Copy) {
+    dependsOn(copyAllDependencies)
+    from "conf/proxypass.properties"
+    from "conf/simplelogger.properties"
+    into "${buildDir}/dist/conf"
+}
+
+task copyAllRun(type: Copy) {
+    dependsOn(copyAllProerties)
+    from "run/gotpache.bat"
+    from "run/gotpache.sh"
+    into "${buildDir}/dist"
+}
+
+
+task packageDistribution(type: Zip) {
+    dependsOn(copyAllRun)
+    from "$buildDir/dist"
+    destinationDirectory = file("dist")
+}
+
+build.dependsOn(copyAllDependencies)
+build.dependsOn(copyAllProerties)
+build.dependsOn(copyAllRun)
+build.dependsOn(packageDistribution)
+
+dependencies {
+    implementation 'org.slf4j:slf4j-api:2.0.6'
+    implementation 'org.slf4j:slf4j-simple:2.0.6'
+    implementation 'org.bouncycastle:bcprov-jdk15on:1.67'
+    implementation 'org.bouncycastle:bcpkix-jdk15on:1.67'
+}
