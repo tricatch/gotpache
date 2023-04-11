@@ -1,6 +1,6 @@
 # gotpache(갖바치 - 갖신'의 장인)
 
-Development utility - act as apache proxypass and generates its own certificates for sites.
+Development utility - act as apache proxypass and generates its own ssl certificates for sites.
 
 Gotpache는 개발/테스트환경에서 apache의 ProxyPass 기능과 SSL인증서를 간편하게 사용하기 위해서 개발한 프로그램입니다.
 apache/nginx의 복잡한 기능을 가지고 있지 않지만, ProxyPass와 유사한 기능과 SSL인증서를 동적으로 생성하는 기능을 제공합니다.
