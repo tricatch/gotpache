@@ -7,6 +7,7 @@ Gotpache는 개발/테스트환경에서 apache의 ProxyPass 기능과 SSL인증
 apache/nginx의 복잡한 기능을 가지고 있지 않지만, ProxyPass와 유사한 기능과 SSL인증서를 동적으로 생성하는 기능을 제공합니다.
 개발/테스트환경에서 프로그램 실행만으로 복잡한 인증서문제를 해결할 수 있습니다.
 또한 최근 HTTPS를 적용하면서 강화되는 samesite와 같은 보안 이슈를 gotpache를 통해 간단하게 구성하고 테스트할 수 있습니다. 
+<br>
 
 ## How to work
 <img src="./gp_howto_work.png"/>
@@ -24,6 +25,8 @@ apache/nginx의 복잡한 기능을 가지고 있지 않지만, ProxyPass와 유
 7. 브라우저에서 https://foo.com 접속 (실시간으로 foo.com 인증서 생성)
 8. 브라우저에서 https://foo2.com 접속 (실시간으로 foo2.com 인증서 생성)
 
+<br>
+<br>
 ## 소스관련
 코드를 계속업데이트하기 힘들지도 몰라서 최대한 단순하게 작성했습니다.
 지금 개발환경에서 사용하는데 큰 문제가 없어서 HTTP 1.0만 구현하고 있습니다.
