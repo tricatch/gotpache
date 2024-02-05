@@ -1,3 +1,4 @@
+
 # gotpache(갖바치 - 갖신'의 장인)
 
 Development utility - act as apache proxypass and generates its own ssl certificates for sites.
@@ -7,6 +8,7 @@ apache/nginx의 복잡한 기능을 가지고 있지 않지만, ProxyPass와 유
 개발/테스트환경에서 프로그램 실행만으로 복잡한 인증서문제를 해결할 수 있습니다.
 또한 최근 HTTPS를 적용하면서 강화되는 samesite와 같은 보안 이슈를 gotpache를 통해 간단하게 구성하고 테스트할 수 있습니다. 
 
+## How to work
 <img src="./gp_howto_work.png"/>
 
 
