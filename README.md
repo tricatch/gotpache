@@ -11,6 +11,8 @@ apache/nginx의 복잡한 기능을 가지고 있지 않지만, ProxyPass와 유
 ## How to work
 <img src="./gp_howto_work.png"/>
 
+<br>
+<br>
 
 ## 사용방법
 1. gotpache.x.x.x.zip은 다운로드 받아 압축을 해제
