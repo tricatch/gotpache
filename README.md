@@ -10,7 +10,7 @@ apache/nginx의 복잡한 기능을 가지고 있지 않지만, ProxyPass와 유
 <br>
 
 ## How to work
-<img src="./gp_howto_work2.png"/>
+<img src="./gp_howto_work3.png"/>
 
 <br>
 <br>
