@@ -136,7 +136,7 @@ public class SSLPassServer extends AbstractServer {
 
             SSLServerSocketFactory ssf = this.sslContext.getServerSocketFactory();
             SSLServerSocket sslSvrSocket = (SSLServerSocket) ssf.createServerSocket(port);
-            sslSvrSocket.setEnabledProtocols(new String[] { "TLSv1.1", "TLSv1.2" });
+            sslSvrSocket.setEnabledProtocols(new String[] { "TLSv1.3" });
 
             while (true) {
 
