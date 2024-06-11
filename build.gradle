@@ -24,7 +24,7 @@ task copyAllDependencies(type: Copy) {
 
 task copyAllProerties(type: Copy) {
     dependsOn(copyAllDependencies)
-    from "conf/proxypass.properties"
+    from "conf/proxypass.yml"
     from "conf/simplelogger.properties"
     into "${buildDir}/dist/conf"
 }
