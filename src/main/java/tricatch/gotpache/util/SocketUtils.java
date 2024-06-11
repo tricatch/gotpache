@@ -1,46 +1,68 @@
 package tricatch.gotpache.util;
 
-import javax.net.ssl.SSLSocket;
-import javax.net.ssl.SSLSocketFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import javax.net.ssl.*;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.Socket;
+import java.security.SecureRandom;
+import java.security.cert.CertificateException;
+import java.security.cert.X509Certificate;
 
 public class SocketUtils {
 
-    public static  Socket create(String host, int port, int connectTimeout, int readTimeout, boolean ssl) throws IOException {
+    private static Logger logger = LoggerFactory.getLogger(SocketUtils.class);
 
-        InetSocketAddress endpoint = new InetSocketAddress( host, port);
+    public static Socket createHttp(String host, int port, int connectTimeout, int readTimeout) throws IOException {
 
-        if( ssl ){
+        if( port<0 ) port = 80;
 
-            SSLSocketFactory socketFactory = (SSLSocketFactory) SSLSocketFactory.getDefault();
+        InetSocketAddress endpoint = new InetSocketAddress(host, port);
 
-            Socket tcpSocket = new Socket();
-            tcpSocket.setSoTimeout(readTimeout);
-            tcpSocket.connect(endpoint, connectTimeout);
+        Socket socket = new Socket();
+        socket.setSoTimeout(readTimeout);
+        socket.connect(endpoint, connectTimeout);
 
-            Socket socket = socketFactory.createSocket(tcpSocket, endpoint.getHostName(), endpoint.getPort(), false);
-
-            ((SSLSocket)socket).startHandshake();
-
-            return socket;
-
-        } else {
-
-            Socket socket = new Socket();
-            socket.setSoTimeout(readTimeout);
-            socket.connect(endpoint, connectTimeout);
-
-            return socket;
-        }
+        return socket;
     }
 
-    public static  Socket create(String domain, String host, int port, int connectTimeout, int readTimeout) throws IOException {
+    public static Socket createHttps(String domain, String host, int port, int connectTimeout, int readTimeout) throws IOException {
 
-        InetSocketAddress endpoint = new InetSocketAddress( host, port);
+        if (logger.isDebugEnabled()) logger.debug("createHttps: domain={}, host={}, port={}", domain, host, port);
 
-        SSLSocketFactory socketFactory = (SSLSocketFactory) SSLSocketFactory.getDefault();
+        if( port<0 ) port = 443;
+
+        InetSocketAddress endpoint = new InetSocketAddress(host, port);
+
+        TrustManager[] trustAllCerts = new TrustManager[]{
+                new X509TrustManager() {
+                    @Override
+                    public void checkClientTrusted(X509Certificate[] chain, String authType) throws CertificateException {
+                    }
+
+                    @Override
+                    public void checkServerTrusted(X509Certificate[] chain, String authType) throws CertificateException {
+                    }
+
+                    @Override
+                    public X509Certificate[] getAcceptedIssuers() {
+                        return new X509Certificate[0];
+                    }
+                }
+        };
+
+        SSLContext sc = null;
+
+        try {
+            sc = SSLContext.getInstance("SSL");
+            sc.init(null, trustAllCerts, new SecureRandom());
+        } catch (Exception e) {
+            throw new IOException(e);
+        }
+
+        SSLSocketFactory socketFactory = sc.getSocketFactory();
 
         Socket tcpSocket = new Socket();
         tcpSocket.setSoTimeout(readTimeout);
@@ -48,7 +70,7 @@ public class SocketUtils {
 
         Socket socket = socketFactory.createSocket(tcpSocket, domain, endpoint.getPort(), false);
 
-        ((SSLSocket)socket).startHandshake();
+        ((SSLSocket) socket).startHandshake();
 
         return socket;
     }

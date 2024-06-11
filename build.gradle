@@ -3,7 +3,7 @@ plugins {
 }
 
 group 'tricatch'
-version '0.1.1'
+version '0.2.0'
 
 repositories {
     mavenCentral()
@@ -51,6 +51,10 @@ build.dependsOn(packageDistribution)
 dependencies {
     implementation 'org.slf4j:slf4j-api:2.0.6'
     implementation 'org.slf4j:slf4j-simple:2.0.6'
-    implementation 'org.bouncycastle:bcprov-jdk15on:1.67'
-    implementation 'org.bouncycastle:bcpkix-jdk15on:1.67'
+    implementation 'org.yaml:snakeyaml:2.2'
+    implementation 'org.bouncycastle:bcprov-jdk18on:1.78.1'
+    implementation 'org.bouncycastle:bcpkix-jdk18on:1.78.1'
+    implementation 'com.fasterxml.jackson.core:jackson-core:2.17.1'
+    implementation 'com.fasterxml.jackson.core:jackson-databind:2.17.1'
+    implementation 'io.github.azagniotov:ant-style-path-matcher:1.0.0'
 }

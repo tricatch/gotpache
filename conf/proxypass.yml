@@ -1,0 +1,23 @@
+
+http:
+  port: 80
+  connectTimeout: 1000
+  readTimeout: 2000
+
+https:
+  port: 443
+  connectTimeout: 1000
+  readTimeout: 2000
+
+localDomainIP: 127.0.0.1
+
+virtual:
+  - domain: foo1.com
+    location:
+     - { host: https://192.168.0.1:8081, path: [ /, /front/** ] }
+     - { host: https://192.168.0.1:8082, path: [ /** ] }
+
+  - domain: foo2.com
+    location:
+      - { host: https://192.168.0.1:8081, path: [ /** ] }
+

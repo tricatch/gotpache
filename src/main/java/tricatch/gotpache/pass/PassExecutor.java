@@ -1,5 +1,6 @@
 package tricatch.gotpache.pass;
 
+import io.github.azagniotov.matcher.AntPathMatcher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -13,6 +14,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.Socket;
+import java.net.URL;
 import java.util.List;
 
 public class PassExecutor implements Runnable {
@@ -29,11 +31,11 @@ public class PassExecutor implements Runnable {
     private InputStream serverIn = null;
     private ServerResponse serverRes = null;
 
-    private PassHostMap virtualHosts;
+    private VirtualHosts virtualHosts;
     private int connectTimeout = 0;
     private int readTimeout = 0;
 
-    public PassExecutor(Socket clientSocket, PassHostMap virtualHosts, int connectTimeout, int readTimeout){
+    public PassExecutor(Socket clientSocket, VirtualHosts virtualHosts, int connectTimeout, int readTimeout){
 
         this.clientSocket = clientSocket;
         this.virtualHosts = virtualHosts;
@@ -129,40 +131,47 @@ public class PassExecutor implements Runnable {
 
     private Socket createServerSocket() throws IOException {
 
-        String host = this.clientReq.getHost();
+        String vhost = this.clientReq.getHost();
         String uri = this.clientReq.getUri();
 
-        PassHost passHost = null;
-        PassHostList passHostList = this.virtualHosts.get(host);
+        List<VirtualPath> urls = this.virtualHosts.get(vhost);
 
-        if( passHostList==null || passHostList.size()==0 ) throw new IOException( "undefined vhost - " + host );
+        if( urls==null || urls.size()==0 ) throw new IOException( "undefined vhost - " + vhost );
 
-        if( passHostList.size()==1 ) passHost = passHostList.get(0);
-        else {
-            for (int i = 0; i < passHostList.size(); i++) {
-                PassHost tmpHost = passHostList.get(i);
-                if( uri.startsWith( tmpHost.getPath() ) ){
-                    passHost = tmpHost;
-                    if( logger.isDebugEnabled()){
-                        logger.debug( "url matched - host={}/{}, {} | {}", tmpHost.getVirtualHost(), tmpHost.getTargetHost(), tmpHost.getPath(), uri );
-                    }
-                    break;
+        VirtualPath virtualPath = null;
+
+        for (int i = 0; i < urls.size(); i++) {
+            VirtualPath vu = urls.get(i);
+            AntPathMatcher pathMatcher = new AntPathMatcher.Builder().build();
+            boolean matched = pathMatcher.isMatch( vu.getPath(), uri );
+
+            logger.debug( "url matched - {}, {}, {}", matched, vu.getPath(), uri );
+
+            if( matched ){
+                virtualPath = vu;
+                if( logger.isDebugEnabled()){
+                    logger.debug( "url matched - {}{}, {}{}", vhost, vu.getPath(), vu.getTarget(), uri );
                 }
+                break;
             }
         }
 
-        if( passHost==null ) throw new IOException( "Not found pattern - " + uri + " -- " + host );
 
-        if( logger.isDebugEnabled() ) logger.debug( "S-REQ-Socket open - {} to {}:{}/SSL={}", this.clientReq.getMethod()
-                , passHost.getTargetHost()
-                , passHost.getTargetPort()
-                , passHost.isSsl()
-        );
+        if( virtualPath ==null ) throw new IOException( "Not found pattern - " + uri + " -- " + vhost );
 
-        if( passHost.isSsl() ){
-            return SocketUtils.create( passHost.getVirtualHost(), passHost.getTargetHost(), passHost.getTargetPort(), this.connectTimeout, this.readTimeout);
+//        if( logger.isDebugEnabled() ) logger.debug( "S-REQ-Socket open - {} to {}:{}/SSL={}", this.clientReq.getMethod()
+//                , .getTargetHost()
+//                , .getTargetPort()
+//                , .isSsl()
+//        );
+
+
+        URL target = virtualPath.getTarget();
+
+        if( "https".equals(target.getProtocol()) ){
+            return SocketUtils.createHttps(vhost, target.getHost(), target.getPort(), this.connectTimeout, this.readTimeout);
         } else {
-            return SocketUtils.create( passHost.getTargetHost(), passHost.getTargetPort(), this.connectTimeout, this.readTimeout, false );
+            return SocketUtils.createHttp(target.getHost(), target.getPort(), this.connectTimeout, this.readTimeout);
         }
     }
 

@@ -9,6 +9,17 @@ apache/nginx의 복잡한 기능을 가지고 있지 않지만, ProxyPass와 유
 또한 최근 HTTPS를 적용하면서 강화되는 samesite와 같은 보안 이슈를 gotpache를 통해 간단하게 구성하고 테스트할 수 있습니다. 
 <br>
 
+### Release Note
+
+#### v0.2.0
+* AntPathMatcher를 통해 다양한 URL 패턴으로 호스트 분기 설정설정
+* YML 설정파일을 통해 가독성 있는 호스트 분기 설정
+* 127.0.0.1로 설정된 도메인만 활성화
+
+#### v0.1.1
+* 요청하는 Domain의 SSL 인증서 동적생성
+* URL 경로에 따른 호스트 분기
+
 ## How to work
 <img src="./gp_howto_work4.png" width="50%" />
 

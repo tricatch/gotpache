@@ -4,9 +4,18 @@ import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.yaml.snakeyaml.DumperOptions;
+import org.yaml.snakeyaml.LoaderOptions;
+import org.yaml.snakeyaml.Yaml;
+import org.yaml.snakeyaml.constructor.Constructor;
+import org.yaml.snakeyaml.representer.Representer;
 import tricatch.gotpache.cert.CertTool;
+import tricatch.gotpache.cfg.Config;
 import tricatch.gotpache.pass.HttpPassServer;
 import tricatch.gotpache.pass.SSLPassServer;
+import tricatch.gotpache.pass.VirtualHosts;
+import tricatch.gotpache.util.JsonUtil;
+import tricatch.gotpache.util.VirtualHostUtil;
 
 import java.io.*;
 import java.security.Security;
@@ -18,9 +27,10 @@ public class ProxyPassServer {
 
     private static Logger logger = LoggerFactory.getLogger(ProxyPassServer.class);
 
-    private static final String CFG_FILE = "./conf/proxypass.properties";
+    private static final String CFG_FILE = "./conf/proxypass.yml";
 
-    public static Properties config = new Properties();
+    public static Config config = null;
+    public static VirtualHosts virtualHosts = null;
 
     public static final int MAX_THREAD = 100;
 
@@ -44,21 +54,42 @@ public class ProxyPassServer {
 
     public static void main(String[] args) {
 
+        InputStream inCfg = null;
+
         try{
 
     		Security.addProvider(new BouncyCastleProvider());
     		
         	CertTool.init();
-        	
-            config.load( new FileInputStream(CFG_FILE) );
 
-            serverExecutor.execute( new SSLPassServer( config ) );
-            serverExecutor.execute( new HttpPassServer( config ) );
+            Representer representer = new Representer(new DumperOptions());
+            representer.getPropertyUtils().setSkipMissingProperties(true);
+            LoaderOptions loaderOptions = new LoaderOptions();
+
+            Constructor constructor = new Constructor(Config.class, loaderOptions);
+            Yaml yaml = new Yaml(constructor, representer);
+
+            inCfg = new FileInputStream(CFG_FILE);
+
+            config = yaml.load(inCfg);
+            virtualHosts = VirtualHostUtil.convert( config.getVirtual(), config);
+
+            if( virtualHosts.isEmpty() ){
+                logger.error( "No virtual host" );
+                return;
+            }
+
+            logger.info( "virtual.hosts={}", JsonUtil.pretty(virtualHosts) );
+
+            serverExecutor.execute( new SSLPassServer( config, virtualHosts ) );
+            serverExecutor.execute( new HttpPassServer( config, virtualHosts ) );
 
 
         }catch(Exception e){
 
             logger.error( e.getMessage(), e );
+        } finally {
+            if( inCfg!=null ) try{ inCfg.close(); }catch (Exception e){}
         }
 
     }
