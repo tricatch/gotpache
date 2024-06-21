@@ -9,6 +9,10 @@ https:
   connectTimeout: 1000
   readTimeout: 2000
 
+ca:
+  name: GOTPACHE-ROOT-CA
+  alias: foo
+
 localDomainIP: 127.0.0.1
 
 virtual:

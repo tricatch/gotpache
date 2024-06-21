@@ -54,13 +54,7 @@ public class ProxyPassServer {
 
     public static void main(String[] args) {
 
-        InputStream inCfg = null;
-
         try{
-
-    		Security.addProvider(new BouncyCastleProvider());
-    		
-        	CertTool.init();
 
             Representer representer = new Representer(new DumperOptions());
             representer.getPropertyUtils().setSkipMissingProperties(true);
@@ -69,9 +63,11 @@ public class ProxyPassServer {
             Constructor constructor = new Constructor(Config.class, loaderOptions);
             Yaml yaml = new Yaml(constructor, representer);
 
-            inCfg = new FileInputStream(CFG_FILE);
+            config = yaml.load(new FileInputStream(CFG_FILE));
 
-            config = yaml.load(inCfg);
+            Security.addProvider(new BouncyCastleProvider());
+            CertTool.init(config.getCa().getName(), config.getCa().getAlias());
+
             virtualHosts = VirtualHostUtil.convert( config.getVirtual(), config);
 
             if( virtualHosts.isEmpty() ){
@@ -84,12 +80,8 @@ public class ProxyPassServer {
             serverExecutor.execute( new SSLPassServer( config, virtualHosts ) );
             serverExecutor.execute( new HttpPassServer( config, virtualHosts ) );
 
-
         }catch(Exception e){
-
             logger.error( e.getMessage(), e );
-        } finally {
-            if( inCfg!=null ) try{ inCfg.close(); }catch (Exception e){}
         }
 
     }

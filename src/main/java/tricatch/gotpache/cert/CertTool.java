@@ -42,8 +42,6 @@ import org.bouncycastle.util.io.pem.PemWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import tricatch.gotpache.util.SysUtil;
-
 public class CertTool {
 
 	private static Logger logger = LoggerFactory.getLogger(CertTool.class);
@@ -64,12 +62,9 @@ public class CertTool {
 	private static X509Certificate rootCert = null;
 	private static X500Name rootCertIssuer = null;
 
-	public static void init() throws Exception {
+	public static void init(String name, String alias) throws Exception {
 
-		String name = "Gotpache ProxyPass CA - " + SysUtil.getHostname();
-		String alias = SysUtil.getHostname();
-
-		ROOT_CA_FILE = name;
+		ROOT_CA_FILE = name + "_" + alias;
 		ROOT_CA_NAME = "CN=" + name;
 		ROOT_CA_PRI_KEY_ALIAS = alias;
 		ROOT_CA_PRI_KEY_PASS = "password";
