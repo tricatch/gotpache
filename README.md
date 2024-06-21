@@ -29,7 +29,7 @@ apache/nginx의 복잡한 기능을 가지고 있지 않지만, ProxyPass와 유
 ## 사용방법
 1. gotpache.x.x.x.zip은 다운로드 받아 압축을 해제
 2. gotpache.bat 또는 gotpache.sh를 실행(JAVA_HOME 설정 필요)
-3. conf 경로 생성된 ROOT 인증서 확인(*.cer)
+3. conf/proxypass.yml파일에 ca 파일명 및 alias를 설정하여 새로 생성하거나 기존 ROOT 인증서 사용가능
 4. cer 파일을 더블클릭하여 시스템에 ROOT 인증서 설치(구글링-ROOT 인증서 설치)
    * Windows : https://learn.microsoft.com/en-us/skype-sdk/sdn/articles/installing-the-trusted-root-certificate
 5. 로컬 hosts 파일에서 도메인 변경( ex. 127.0.0.1 foo.com, 127.0.0.1 foo2.com)
