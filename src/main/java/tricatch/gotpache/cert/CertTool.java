@@ -64,8 +64,8 @@ public class CertTool {
 
 	public static void init(String name, String alias) throws Exception {
 
-		ROOT_CA_FILE = name + "_" + alias;
-		ROOT_CA_NAME = "CN=" + name;
+		ROOT_CA_FILE = name + "-" + alias;
+		ROOT_CA_NAME = "CN=" + name + "-" + alias;
 		ROOT_CA_PRI_KEY_ALIAS = alias;
 		ROOT_CA_PRI_KEY_PASS = "password";
 

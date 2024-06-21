@@ -11,6 +11,9 @@ apache/nginx의 복잡한 기능을 가지고 있지 않지만, ProxyPass와 유
 
 ### Release Note
 
+#### v0.2.2
+* 생성 또는 사용할 인증서 파일정보 yml 파일에 설정
+
 #### v0.2.0
 * AntPathMatcher를 통해 다양한 URL 패턴으로 호스트 분기 설정설정
 * YML 설정파일을 통해 가독성 있는 호스트 분기 설정
