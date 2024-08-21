@@ -45,6 +45,8 @@ apache/nginx의 복잡한 기능을 가지고 있지 않지만, ProxyPass와 유
 
 ## 로컬 HTTPS 구성
 * https://velog.io/@tricatch/posts
+* 로컬 개발환경
+* 로컬 개발환경 + 모바일(iOS, Android 브라우저, 앱)
 
 <br>
 <br> 
