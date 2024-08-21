@@ -43,6 +43,12 @@ apache/nginx의 복잡한 기능을 가지고 있지 않지만, ProxyPass와 유
 <br>
 <br>
 
+## 로컬 HTTPS 구성
+* https://velog.io/@tricatch/posts
+
+<br>
+<br> 
+
 ## 소스관련
 코드를 계속업데이트하기 힘들지도 몰라서 최대한 단순하게 작성했습니다.
 지금 개발환경에서 사용하는데 큰 문제가 없어서 HTTP 1.0만 구현하고 있습니다.
