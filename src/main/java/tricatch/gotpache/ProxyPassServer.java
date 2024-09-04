@@ -12,6 +12,7 @@ import org.yaml.snakeyaml.representer.Representer;
 import tricatch.gotpache.cert.CertTool;
 import tricatch.gotpache.cfg.Config;
 import tricatch.gotpache.pass.HttpPassServer;
+import tricatch.gotpache.pass.ProxyPassConsole;
 import tricatch.gotpache.pass.SSLPassServer;
 import tricatch.gotpache.pass.VirtualHosts;
 import tricatch.gotpache.util.JsonUtil;
@@ -19,7 +20,6 @@ import tricatch.gotpache.util.VirtualHostUtil;
 
 import java.io.*;
 import java.security.Security;
-import java.util.Properties;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadPoolExecutor;
 
@@ -79,6 +79,7 @@ public class ProxyPassServer {
 
             serverExecutor.execute( new SSLPassServer( config, virtualHosts ) );
             serverExecutor.execute( new HttpPassServer( config, virtualHosts ) );
+            serverExecutor.execute( new ProxyPassConsole( config ) );
 
         }catch(Exception e){
             logger.error( e.getMessage(), e );

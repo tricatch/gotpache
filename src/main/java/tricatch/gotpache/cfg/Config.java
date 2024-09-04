@@ -1,9 +1,6 @@
 package tricatch.gotpache.cfg;
 
-import tricatch.gotpache.cfg.attr.CaAlias;
-import tricatch.gotpache.cfg.attr.Http;
-import tricatch.gotpache.cfg.attr.Https;
-import tricatch.gotpache.cfg.attr.VirtualDomain;
+import tricatch.gotpache.cfg.attr.*;
 
 import java.util.List;
 
@@ -11,7 +8,7 @@ public class Config {
 
     private Http http;
     private Https https;
-
+    private Console console;
     private CaAlias ca;
 
     private String localDomainIP;
@@ -31,6 +28,14 @@ public class Config {
 
     public void setHttps(Https https) {
         this.https = https;
+    }
+
+    public Console getConsole(){
+        return this.console;
+    }
+
+    public void setConsole(Console console){
+        this.console = console;
     }
 
     public CaAlias getCa() {

@@ -1,4 +1,3 @@
-
 http:
   port: 80
   connectTimeout: 1000
@@ -9,19 +8,28 @@ https:
   connectTimeout: 1000
   readTimeout: 2000
 
+console:
+  port: 36912
+  connectTimeout: 1000
+  readTimeout: 2000
+
 ca:
   name: Gotpache ProxyPass CA
   alias: foo
+  download: /gotca.cer
 
 localDomainIP: 127.0.0.1
 
 virtual:
-  - domain: foo1.com
+  - domain: foo.kr
     location:
-     - { host: https://192.168.0.1:8081, path: [ /, /front/** ] }
-     - { host: https://192.168.0.1:8082, path: [ /** ] }
+      - { host: http://127.0.0.1:8888, path: [ /** ] }
+      - { host: http://127.0.0.1:9999, path: [ /img/**, /js/** ] }
 
-  - domain: foo2.com
+  - domain: api-foo.kr
     location:
-      - { host: https://192.168.0.1:8081, path: [ /** ] }
+      - { host: http://127.0.0.1:7777, path: [ /** ] }
 
+  - domain: goo.kr
+    location:
+      - { host: http://127.0.0.1:8899, path: [ /** ], header: [ "Content-Security-Policy: frame-ancestors 'self' https://foo.kr", "--ETag" ] }

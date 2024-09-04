@@ -230,4 +230,8 @@ public class CertTool {
 		privateKeyWriter.writeObject(new PemObject("CERTIFICATE", certificate.getEncoded()));
 		privateKeyWriter.close();
 	}
+
+	public static String getRootCaFile(){
+		return ROOT_CA_FILE;
+	}
 }

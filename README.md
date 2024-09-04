@@ -11,6 +11,13 @@ apache/nginx의 복잡한 기능을 가지고 있지 않지만, ProxyPass와 유
 
 ### Release Note
 
+#### v0.3.0
+* http://{ip}:36912/gotca.cer 루트인증서 다운로드 지원
+* http header 추가/삭제 지원
+  * add ? header: [ "X-Frame-Options: DENY" ]
+  * remove("--") ? header: [ "--X-Frame-Options" ]
+
+
 #### v0.2.2
 * 생성 또는 사용할 인증서 파일정보 yml 파일에 설정
 
@@ -24,7 +31,7 @@ apache/nginx의 복잡한 기능을 가지고 있지 않지만, ProxyPass와 유
 * URL 경로에 따른 호스트 분기
 
 ## How to work
-<img src="./gp_howto_work4.png" width="50%" />
+<img src="https://velog.velcdn.com/images/tricatch/post/68b20b75-5de0-4aff-b53c-01b4c0b48c18/image.png" />
 
 <br>
 <br>
@@ -35,10 +42,10 @@ apache/nginx의 복잡한 기능을 가지고 있지 않지만, ProxyPass와 유
 3. conf/proxypass.yml파일에 ca 파일명 및 alias를 설정하여 새로 생성하거나 기존 ROOT 인증서 사용가능
 4. cer 파일을 더블클릭하여 시스템에 ROOT 인증서 설치(구글링-ROOT 인증서 설치)
    * Windows : https://learn.microsoft.com/en-us/skype-sdk/sdn/articles/installing-the-trusted-root-certificate
-5. 로컬 hosts 파일에서 도메인 변경( ex. 127.0.0.1 foo.com, 127.0.0.1 foo2.com)
+5. 로컬 hosts 파일에서 도메인 변경( ex. 127.0.0.1 foo.kr, 127.0.0.1 goo.kr)
 6. conf/proxypass.yml - URL 패턴에 따른 서버 분기 설정(로컬/원격 관계없음)
-7. 브라우저에서 https://foo.com 접속 (실시간으로 foo.com 인증서 생성)
-8. 브라우저에서 https://foo2.com 접속 (실시간으로 foo2.com 인증서 생성)
+7. 브라우저에서 https://foo.kr 접속 (실시간으로 foo.kr 인증서 생성)
+8. 브라우저에서 https://goo.kr 접속 (실시간으로 goo.kr 인증서 생성)
 
 <br>
 <br>

@@ -3,15 +3,22 @@ plugins {
 }
 
 group 'tricatch'
-version '0.2.2'
+version '0.3.0'
 
 repositories {
     mavenCentral()
 }
 
+
+
 jar {
     manifest {
-        attributes 'Main-Class': 'tricatch.gotpache.ProxyPassServer'
+        attributes(
+            'Main-Class': 'tricatch.gotpache.ProxyPassServer',
+            'Implementation-Title': 'gotpache',
+            'Implementation-Version': archiveVersion,
+            'Implementation-Vendor': 'tricatch'
+        )
     }
 }
 

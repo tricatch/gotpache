@@ -62,11 +62,30 @@ public class VirtualHostUtil {
                     virtualPath.setPath(path);
                     virtualPath.setTarget(target);
 
-                    if( path.indexOf("*")>=0 ){
+                    if( path.contains("*") ){
                         virtualPathListPattern.add(virtualPath);
                     }else{
                         virtualPathListExact.add(virtualPath);
                     }
+
+                    List<String> addHeader = new ArrayList<>();
+                    List<String> removeHeader = new ArrayList<>();
+
+                    List<String> headers = virtualLocation.getHeader();
+                    if( headers!=null && !headers.isEmpty() ){
+                        for(int h=0;h<headers.size();h++){
+                            String header = headers.get(h);
+                            if( header.startsWith("--") ){
+                                header = header.substring(2);
+                                removeHeader.add(header);
+                            } else {
+                                addHeader.add(header);
+                            }
+                        }
+                    }
+
+                    virtualPath.setAddHeader(addHeader);
+                    virtualPath.setRemoveHeader(removeHeader);
                 }
             }
 

@@ -15,6 +15,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.Socket;
 import java.net.URL;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 public class PassExecutor implements Runnable {
@@ -34,6 +35,8 @@ public class PassExecutor implements Runnable {
     private VirtualHosts virtualHosts;
     private int connectTimeout = 0;
     private int readTimeout = 0;
+
+    private VirtualPath virtualPath = null;
 
     public PassExecutor(Socket clientSocket, VirtualHosts virtualHosts, int connectTimeout, int readTimeout){
 
@@ -134,18 +137,18 @@ public class PassExecutor implements Runnable {
         String vhost = this.clientReq.getHost();
         String uri = this.clientReq.getUri();
 
+        if( logger.isDebugEnabled() ) logger.debug( "req, vhost={}, uri={}", vhost, uri);
+
         List<VirtualPath> urls = this.virtualHosts.get(vhost);
 
         if( urls==null || urls.size()==0 ) throw new IOException( "undefined vhost - " + vhost );
-
-        VirtualPath virtualPath = null;
 
         for (int i = 0; i < urls.size(); i++) {
             VirtualPath vu = urls.get(i);
             AntPathMatcher pathMatcher = new AntPathMatcher.Builder().build();
             boolean matched = pathMatcher.isMatch( vu.getPath(), uri );
 
-            logger.debug( "url matched - {}, {}, {}", matched, vu.getPath(), uri );
+            if( logger.isDebugEnabled() ) logger.debug( "url matched - {}, {}, {}", matched, vu.getPath(), uri );
 
             if( matched ){
                 virtualPath = vu;
@@ -157,7 +160,7 @@ public class PassExecutor implements Runnable {
         }
 
 
-        if( virtualPath ==null ) throw new IOException( "Not found pattern - " + uri + " -- " + vhost );
+        if( virtualPath == null ) throw new IOException( "Not found pattern - " + uri + " -- " + vhost );
 
 //        if( logger.isDebugEnabled() ) logger.debug( "S-REQ-Socket open - {} to {}:{}/SSL={}", this.clientReq.getMethod()
 //                , .getTargetHost()
@@ -219,16 +222,48 @@ public class PassExecutor implements Runnable {
 
         List<byte[]> resHeaders = this.serverRes.getHeaders();
 
-        for(int i=0;i<resHeaders.size();i++){
+        for(int resHeaderIdx=0;resHeaderIdx<resHeaders.size();resHeaderIdx++){
 
-            byte[] line = resHeaders.get(i);
+            byte[] line = resHeaders.get(resHeaderIdx);
+            String sline = new String(line);
+            boolean removed = false;
 
-            //logger.info( "C-RES-H-W-{} {}", String.format("%02d", i+1), new String(line).trim() );
+            if( resHeaderIdx>0 && this.virtualPath != null && !this.virtualPath.getRemoveHeader().isEmpty()) {
+                List<String> removeHeader = this.virtualPath.getRemoveHeader();
+                for(int i=0; i<removeHeader.size();i++){
+                    String rmHeader = removeHeader.get(i);
+                    if( sline.toLowerCase().startsWith(rmHeader.toLowerCase()) ){
+                        removed = true;
+                        break;
+                    }
+                }
+            }
 
-            if( logger.isTraceEnabled() ) logger.trace( "C-RES-H-W-{} {}", String.format("%02d", i+1), new String(line).trim() );
+            if( logger.isTraceEnabled() ){
+                String rmmsg = removed ? "REMOVED" : "";
+                logger.trace( "C-RES-H-W-{} {} {}", String.format("%02d", resHeaderIdx+1), sline, rmmsg );
+            }
+
+            if( removed ) continue;
 
             this.clientOut.write(line);
+
+            //add headers at virtualhost conf after status line
+            if( resHeaderIdx==0 && this.virtualPath != null && !this.virtualPath.getAddHeader().isEmpty() ){
+                List<String> addHeader = this.virtualPath.getAddHeader();
+                for (int fhidx = 0; fhidx < addHeader.size(); fhidx++) {
+                    String header = addHeader.get(fhidx);
+                    line = header.getBytes(StandardCharsets.UTF_8);
+                    if( logger.isTraceEnabled() ){
+                        logger.trace( "C-RES-H-W-{}..{} {}", String.format("%02d", resHeaderIdx+1), fhidx+1, header );
+                    }
+                    this.clientOut.write(line);
+                    this.clientOut.write(HTTP.CRLF);
+                }
+            }
+
         }
+
         this.clientOut.flush();
     }
 
