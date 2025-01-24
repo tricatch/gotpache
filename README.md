@@ -18,7 +18,7 @@ apache/nginx의 복잡한 기능을 가지고 있지 않지만, ProxyPass와 유
 
 #### v0.3.0
 * http://{ip}:36912/gotca.cer 루트인증서 다운로드 추가
-* http header 추가/삭제 추가
+* http header 추가/삭제
   * add ? header: [ "X-Frame-Options: DENY" ]
   * remove("--") ? header: [ "--X-Frame-Options" ]
 
