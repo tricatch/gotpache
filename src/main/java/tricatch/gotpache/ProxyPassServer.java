@@ -9,7 +9,6 @@ import org.yaml.snakeyaml.LoaderOptions;
 import org.yaml.snakeyaml.Yaml;
 import org.yaml.snakeyaml.constructor.Constructor;
 import org.yaml.snakeyaml.representer.Representer;
-import tricatch.gotpache.cert.CertTool;
 import tricatch.gotpache.cfg.Config;
 import tricatch.gotpache.pass.HttpPassServer;
 import tricatch.gotpache.pass.ProxyPassConsole;
@@ -66,7 +65,6 @@ public class ProxyPassServer {
             config = yaml.load(new FileInputStream(CFG_FILE));
 
             Security.addProvider(new BouncyCastleProvider());
-            CertTool.init(config.getCa().getName(), config.getCa().getAlias());
 
             virtualHosts = VirtualHostUtil.convert( config.getVirtual(), config);
 

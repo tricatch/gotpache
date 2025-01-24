@@ -7,12 +7,12 @@ import javax.net.ssl.SSLSocket;
 import javax.net.ssl.StandardConstants;
 import javax.net.ssl.X509ExtendedKeyManager;
 
+import io.github.tricatch.gotpache.cert.CertificateKeyPair;
+import io.github.tricatch.gotpache.cert.SSLCertificateCreator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.net.Socket;
-import java.security.GeneralSecurityException;
 import java.security.Principal;
 import java.security.PrivateKey;
 import java.security.cert.X509Certificate;
@@ -23,11 +23,13 @@ public class MultiDomainCertKeyManager extends X509ExtendedKeyManager {
 
 	private static Logger logger = LoggerFactory.getLogger(MultiDomainCertKeyManager.class);
 	
-    private Map<String, X509Certificate> domainCertificate = new HashMap<>();
-    private Map<String, PrivateKey> domainPrivateKey = new HashMap<>();
+    private final Map<String, CertificateKeyPair> certificates = new HashMap<>();
+    private final X509Certificate rootCertificate;
+    private final PrivateKey rootPrivaeKey;
 
-    public MultiDomainCertKeyManager()
-            throws IOException, GeneralSecurityException {
+    public MultiDomainCertKeyManager(X509Certificate rootCertificate, PrivateKey rootPrivaeKey){
+        this.rootCertificate = rootCertificate;
+        this.rootPrivaeKey = rootPrivaeKey;
     }
 
     @Override
@@ -45,11 +47,12 @@ public class MultiDomainCertKeyManager extends X509ExtendedKeyManager {
             }
         }
 
-        if( domainCertificate.containsKey(domain) ) return domain;
+        if( certificates.containsKey(domain) ) return domain;
         
         try {
-        	
-        	CertTool.genCert(domain, domainCertificate, domainPrivateKey);
+            SSLCertificateCreator sslCertificateCreator = new SSLCertificateCreator();
+            CertificateKeyPair certificateKeyPair = sslCertificateCreator.generateSSLCertificate(domain, rootCertificate, rootPrivaeKey);
+            certificates.put(domain, certificateKeyPair);
         	return domain;
         }catch(Exception e) {
         	logger.error( "errorGenCert-" + e.getMessage(), e );
@@ -73,9 +76,9 @@ public class MultiDomainCertKeyManager extends X509ExtendedKeyManager {
 
     public X509Certificate[] getCertificateChain(String alias) {
 
-    	if( domainCertificate.containsKey(alias) ) {
+    	if( certificates.containsKey(alias) ) {
     		X509Certificate[] x509 = new X509Certificate[1];
-    		x509[0] = domainCertificate.get(alias);
+    		x509[0] = certificates.get(alias).getCertificate();
     		return x509;
     	}
     	
@@ -85,8 +88,8 @@ public class MultiDomainCertKeyManager extends X509ExtendedKeyManager {
 	@Override
 	public PrivateKey getPrivateKey(String alias) {
 
-		if( domainPrivateKey.containsKey(alias) ) {
-    		return domainPrivateKey.get(alias);
+		if( certificates.containsKey(alias) ) {
+    		return certificates.get(alias).getPrivateKey();
     	}
 		
 		return null;

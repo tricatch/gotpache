@@ -1,6 +1,5 @@
 package tricatch.gotpache.console.cmd;
 
-import tricatch.gotpache.cert.CertTool;
 import tricatch.gotpache.cfg.Config;
 import tricatch.gotpache.console.ConsoleCommand;
 import tricatch.gotpache.console.ConsoleResponse;
@@ -10,21 +9,22 @@ import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 
 public class CmdRootCa implements ConsoleCommand {
 
     @Override
     public ConsoleResponse execute(String uri, Config config) throws IOException {
 
-        String caFilename = CertTool.getRootCaFile() + ".cer";
-        String filepath = "./conf/" + caFilename;
+        Path filePath = Paths.get("./conf", config.getCa().getCert());
+
         FileInputStream fileInputStream = null;
         ByteArrayOutputStream bout = new ByteArrayOutputStream();
 
         try {
 
-            fileInputStream = new FileInputStream(new File(filepath));
+            fileInputStream = new FileInputStream(filePath.toFile());
 
             byte[] buf = new byte[1024*4];
             for(;;){
@@ -34,7 +34,7 @@ public class CmdRootCa implements ConsoleCommand {
                 bout.write(buf, 0, n);
             }
 
-            return ConsoleResponseBuilder.file(bout.toByteArray(), caFilename);
+            return ConsoleResponseBuilder.file(bout.toByteArray(), config.getCa().getCert());
 
         } catch (IOException e) {
             throw e;

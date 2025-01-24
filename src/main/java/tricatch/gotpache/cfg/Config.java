@@ -9,7 +9,7 @@ public class Config {
     private Http http;
     private Https https;
     private Console console;
-    private CaAlias ca;
+    private Ca ca;
 
     private String localDomainIP;
     private List<VirtualDomain> virtual;
@@ -38,11 +38,11 @@ public class Config {
         this.console = console;
     }
 
-    public CaAlias getCa() {
+    public Ca getCa() {
         return ca;
     }
 
-    public void setCa(CaAlias ca) {
+    public void setCa(Ca ca) {
         this.ca = ca;
     }
 

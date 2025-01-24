@@ -14,8 +14,9 @@ console:
   readTimeout: 2000
 
 ca:
-  name: Gotpache ProxyPass CA
-  alias: foo
+  cert: Gotpache ProxyPass CA-foo.cer
+  priKey: Gotpache ProxyPass CA-foo.pfx
+  priPwd:
   download: /gotca.cer
 
 localDomainIP: 127.0.0.1

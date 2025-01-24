@@ -1,11 +1,13 @@
 package tricatch.gotpache.pass;
 
+import io.github.tricatch.gotpache.cert.KeyTool;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import tricatch.gotpache.ProxyPassServer;
 import tricatch.gotpache.cert.MultiDomainCertKeyManager;
 import tricatch.gotpache.cfg.Config;
+import tricatch.gotpache.cfg.attr.Ca;
 import tricatch.gotpache.cfg.attr.Https;
 import tricatch.gotpache.exception.ConfigException;
 import tricatch.gotpache.server.AbstractServer;
@@ -19,6 +21,8 @@ import javax.net.ssl.TrustManager;
 import javax.net.ssl.TrustManagerFactory;
 import java.net.Socket;
 import java.security.KeyStore;
+import java.security.PrivateKey;
+import java.security.cert.X509Certificate;
 
 public class SSLPassServer extends AbstractServer {
 
@@ -36,9 +40,23 @@ public class SSLPassServer extends AbstractServer {
 
         try {
 
+            Ca ca = config.getCa();
+
+            KeyTool keyTool = new KeyTool();
+            X509Certificate rootCertificate = keyTool.readCertificate("./conf", ca.getCert());
+            PrivateKey rootPrivateKey = null;
+
+            if( config.getCa().getPriPwd()!=null && !ca.getPriPwd().trim().isEmpty() ){
+                rootPrivateKey = keyTool.readPrivateKey("./conf", ca.getPriKey(), ca.getPriPwd().trim());
+            } else {
+                rootPrivateKey = keyTool.readPrivateKey("./conf", ca.getPriKey());
+            }
+
         	KeyStore ks = KeyStore.getInstance(KeyStore.getDefaultType());
         	
-            KeyManager[] kms = new KeyManager[]{ new MultiDomainCertKeyManager() };
+            KeyManager[] kms = new KeyManager[]{
+                    new MultiDomainCertKeyManager(rootCertificate, rootPrivateKey)
+            };
 
             TrustManagerFactory tmf = TrustManagerFactory.getInstance("SunX509");
             tmf.init(ks);
