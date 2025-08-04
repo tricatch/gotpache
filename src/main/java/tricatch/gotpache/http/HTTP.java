@@ -16,6 +16,7 @@ public class HTTP {
     public static final String HEADER_PROXY_CONNECTION = "Proxy-Connection:".toLowerCase();
     public static final String HEADER_UPGRADE_INSECURE_REQUEST = "Upgrade-Insecure-Requests:".toLowerCase();
     public static final String HEADER_CONNECTION = "Connection:".toLowerCase();
+    public static final String HEADER_CONNECTION_UPGRADE = "Connection: Upgrade".toLowerCase();
     public static final String HEADER_ACCEPT_ENCODING = "Accept-Encoding:".toLowerCase();
     public static final String HEADER_HOST = "Host:".toLowerCase();
 

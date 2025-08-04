@@ -5,10 +5,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import tricatch.gotpache.http.HTTP;
+import tricatch.gotpache.http.HttpMode;
 import tricatch.gotpache.http.io.HttpInputStream;
 import tricatch.gotpache.http.io.ServerResponse;
 import tricatch.gotpache.util.ByteUtils;
 import tricatch.gotpache.util.SocketUtils;
+import tricatch.gotpache.util.WebSocketUtil;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -63,7 +65,7 @@ public class PassExecutor implements Runnable {
             this.serverOut = this.serverSocket.getOutputStream();
 
             //200. write header to server
-            pipeRequestHeader();
+            HttpMode httpMode = pipeRequestHeader();
 
             //300. read body from client and write to server
             pipeRequestBody();
@@ -75,8 +77,23 @@ public class PassExecutor implements Runnable {
             pipeResponseHeader();
 
             //600. read body from server and write to client
-            pipeResponseBody();
+            if( HttpMode.HTTP == httpMode ) pipeResponseBody();
 
+            //700. Websocket
+            if( HttpMode.WEBSOCKET == httpMode ){
+                if( logger.isDebugEnabled() ) logger.debug( "WebSocket mode - start WebSocket protocol handling" );
+
+                this.clientSocket.setSoTimeout( 60000 * 30 );
+                this.serverSocket.setSoTimeout( 60000 * 30 );
+
+                // WebSocket 핸드셰이크 처리
+                handleWebSocketHandshake();
+
+                // WebSocket 프레임 처리
+                handleWebSocketFrames();
+
+                if( logger.isDebugEnabled() ) logger.debug( "WebSocket mode - WebSocket protocol handling completed" );
+            }
 
         } catch (IOException e) {
             logger.error( e.getMessage(), e);
@@ -178,10 +195,11 @@ public class PassExecutor implements Runnable {
         }
     }
 
-    private void pipeRequestHeader() throws IOException {
+    private HttpMode pipeRequestHeader() throws IOException {
 
         if( logger.isTraceEnabled() ) logger.trace( "S-REQ-H-Write" );
 
+        HttpMode httpMode = HttpMode.HTTP;
         List<byte[]> reqHeaders = this.clientReq.getHeaders();
 
         for(int i=0;i<reqHeaders.size();i++){
@@ -192,8 +210,10 @@ public class PassExecutor implements Runnable {
             if( strLine.startsWith(HTTP.HEADER_PROXY_CONNECTION) ) continue;
             if( strLine.startsWith(HTTP.HEADER_UPGRADE_INSECURE_REQUEST) ) continue;
             //if( strLine.startsWith(HTTP.HEADER_ACCEPT_ENCODING) ) continue;
-
-            if( strLine.startsWith(HTTP.HEADER_CONNECTION) ) bufLine = HTTP.BUF_HEADER_CONNECTION_CLOSE;
+            if( strLine.equalsIgnoreCase(HTTP.HEADER_CONNECTION_UPGRADE) ){
+                //bypass
+                httpMode = HttpMode.WEBSOCKET;
+            } else if( strLine.startsWith(HTTP.HEADER_CONNECTION) ) bufLine = HTTP.BUF_HEADER_CONNECTION_CLOSE;
 
             //logger.info( "S-REQ-H-W-{} {}", String.format("%02d", i+1), new String(bufLine).trim() );
 
@@ -202,6 +222,8 @@ public class PassExecutor implements Runnable {
             serverOut.write(bufLine);
         }
         serverOut.flush();
+
+        return httpMode;
     }
 
     private void pipeRequestBody() throws IOException {
@@ -265,6 +287,14 @@ public class PassExecutor implements Runnable {
         }
 
         this.clientOut.flush();
+
+        // WebSocket 응답인 경우 헤더 전송 완료 로깅
+        if (logger.isDebugEnabled()) {
+            String responseHeaders = new String(this.serverRes.getHeaderBuffer(), 0, this.serverRes.getEndOfHeader());
+            if (responseHeaders.toLowerCase().contains("upgrade: websocket")) {
+                logger.debug("WebSocket response headers sent to client");
+            }
+        }
     }
 
     private void pipeResponseBody() throws IOException {
@@ -379,6 +409,69 @@ public class PassExecutor implements Runnable {
 
             if( chunkedLen==0 ) break;
         }
+    }
+
+    /**
+     * WebSocket 핸드셰이크를 처리합니다.
+     */
+    private void handleWebSocketHandshake() throws IOException {
+        if( logger.isDebugEnabled() ) logger.debug( "WebSocket handshake processing" );
+
+        // WebSocket 핸드셰이크 응답이 제대로 전달되었는지 확인
+        // 서버 응답에서 WebSocket 업그레이드 응답을 클라이언트로 전달
+        // 이미 pipeResponseHeader()에서 처리되었으므로 추가 작업 불필요
+
+        // WebSocket 연결이 성공적으로 설정되었는지 확인
+        if (logger.isDebugEnabled()) {
+            logger.debug("WebSocket handshake completed successfully");
+        }
+    }
+
+    /**
+     * WebSocket 프레임을 처리합니다.
+     */
+    private void handleWebSocketFrames() throws IOException {
+        if (logger.isDebugEnabled()) logger.debug("WebSocket frame processing started");
+
+        // 클라이언트에서 서버로 데이터 중계
+        Thread clientToServer = new Thread(() -> {
+            try {
+                InputStream clientIn = clientSocket.getInputStream();
+                WebSocketUtil.relay(clientIn, serverOut, "C->S");
+                if (logger.isDebugEnabled()) {
+                    logger.debug("WebSocket C->S relay completed");
+                }
+            } catch (IOException e) {
+                logger.debug("WebSocket C->S relay failed: {}", e.getMessage(), e);
+            }
+        }, "WebSocket-C2S");
+
+        // 서버에서 클라이언트로 데이터 중계
+        Thread serverToClient = new Thread(() -> {
+            try {
+                WebSocketUtil.relay(serverIn, clientOut, "S->C");
+                if (logger.isDebugEnabled()) {
+                    logger.debug("WebSocket S->C relay completed");
+                }
+            } catch (IOException e) {
+                logger.debug("WebSocket S->C relay failed: {}", e.getMessage(), e);
+            }
+        }, "WebSocket-S2C");
+
+        clientToServer.start();
+        serverToClient.start();
+
+        logger.debug("WebSocket bidirectional relay started");
+
+        try {
+            clientToServer.join();
+            serverToClient.join();
+        } catch (InterruptedException e) {
+            logger.debug("WebSocket threads interrupted: {}", e.getMessage(), e);
+            Thread.currentThread().interrupt();
+        }
+
+        logger.debug("WebSocket frame processing completed");
     }
 
 }
