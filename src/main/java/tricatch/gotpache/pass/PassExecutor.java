@@ -64,12 +64,8 @@ public class PassExecutor implements Runnable {
            int readReqHeaderLen = httpReqBufferedReader.readHeader();
            if(logger.isDebugEnabled() ) logger.debug( "read-reg-header-length={}", readReqHeaderLen);
 
-            //100. reader header from client
-            //this.clientReq = readClinetRequest(this.clientSocket.getInputStream());
-
-            //this.serverSocket = createServerSocket();
-
-            this.serverSocket = SocketUtils.createHttp("127.0.0.1", 8888, 1000, 1000 );
+            //create socket - url matched
+            this.serverSocket = createServerSocket(httpReqBufferedReader.getHost(), httpReqBufferedReader.getPath());
             this.serverIn = this.serverSocket.getInputStream();
             this.serverOut = this.serverSocket.getOutputStream();
 
@@ -180,10 +176,7 @@ public class PassExecutor implements Runnable {
         return sr;
     }
 
-    private Socket createServerSocket() throws IOException {
-
-        String vhost = this.clientReq.getHost();
-        String uri = this.clientReq.getUri();
+    private Socket createServerSocket(String vhost, String uri) throws IOException {
 
         if( logger.isDebugEnabled() ) logger.debug( "req, vhost={}, uri={}", vhost, uri);
 
@@ -207,15 +200,7 @@ public class PassExecutor implements Runnable {
             }
         }
 
-
         if( virtualPath == null ) throw new IOException( "Not found pattern - " + uri + " -- " + vhost );
-
-//        if( logger.isDebugEnabled() ) logger.debug( "S-REQ-Socket open - {} to {}:{}/SSL={}", this.clientReq.getMethod()
-//                , .getTargetHost()
-//                , .getTargetPort()
-//                , .isSsl()
-//        );
-
 
         URL target = virtualPath.getTarget();
 

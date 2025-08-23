@@ -3,6 +3,7 @@ package tricatch.gotpache.http.io;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import tricatch.gotpache.http.HTTP;
+import tricatch.gotpache.http.HttpHeader;
 import tricatch.gotpache.http.field.HeaderField;
 import tricatch.gotpache.http.field.RequestField;
 import tricatch.gotpache.http.field.ResponseField;
@@ -30,6 +31,18 @@ public class HttpBufferedReader {
     private int bodyBufferLen = 0;
     private int headerBufferLen = 0;
 
+    private String method = null;
+    private String path = null;
+    private String version = null;
+    private int status = 0;
+    private String reason = null;
+
+    private String host = null;
+
+    private BodyMode bodyMode = BodyMode.NULL;
+    private int contentLength = 0;
+
+
     public HttpBufferedReader(ReaderMode readerMode, InputStream in){
         this.readerMode = readerMode;
         this.in = in;
@@ -43,10 +56,46 @@ public class HttpBufferedReader {
         return this.headerBufferLen;
     }
 
+    public boolean isEof() {
+        return eof;
+    }
+
+    public String getMethod() {
+        return method;
+    }
+
+    public String getPath() {
+        return path;
+    }
+
+    public String getVersion() {
+        return version;
+    }
+
+    public int getStatus() {
+        return status;
+    }
+
+    public String getReason() {
+        return reason;
+    }
+
+    public String getHost(){
+        return host;
+    }
+
     public int readHeader() throws IOException {
 
         int pos = 0;
-        headerBufferLen = 0;
+
+        this.headerBufferLen = 0;
+        this.bodyMode = BodyMode.NULL;
+        this.method = null;
+        this.path = null;
+        this.version = null;
+        this.status = 0;
+        this.reason = null;
+        this.contentLength = 0;
 
         for (int readCount=1;;readCount++) {
 
@@ -98,14 +147,12 @@ public class HttpBufferedReader {
             }
 
             if( logger.isTraceEnabled() ){
-                logger.trace( "{} H[{}], full\n{}"
+                logger.trace( "{} HEADERS\n{}"
                         , this.readerMode
-                        , readCount
                         , new String(this.headerBuffer, 0, this.headerBufferLen)
                 );
-                logger.trace( "{} H[{}], full\n{}"
+                logger.trace( "{} HEADERS - RAW\n{}"
                         , this.readerMode
-                        , readCount
                         , ByteUtils.toHexPretty(this.headerBuffer, 0, this.headerBufferLen)
                 );
             }
@@ -116,26 +163,102 @@ public class HttpBufferedReader {
 
                 headerStart = HeaderParser.parseRequestLine(this.headerBuffer, 0, headerBufferLen, this.requestField );
 
-                if( logger.isDebugEnabled() ) logger.trace( "{} parsedRequestLine {}, {}, {}"
+                this.method = this.requestField.method(this.headerBuffer);
+                this.path = this.requestField.path(this.headerBuffer);
+                this.version = this.requestField.version(this.headerBuffer);
+
+                if( logger.isDebugEnabled() ) logger.trace( "{} parsedRequestLine ( {}, {}, {} )"
                         , this.readerMode
-                        , this.requestField.method(this.headerBuffer)
-                        , this.requestField.path(this.headerBuffer)
-                        , this.requestField.version(this.headerBuffer)
+                        , this.method
+                        , this.path
+                        , this.version
                 );
 
             } else {
 
                 headerStart = HeaderParser.parseStatusLine(this.headerBuffer, 0, headerBufferLen, this.responseField );
 
-                if( logger.isDebugEnabled() ) logger.trace( "{} parsedResponseLine {}, {}, {}"
+                this.version = this.responseField.version(this.headerBuffer);
+                this.status = Integer.parseInt(this.responseField.statusCode(this.headerBuffer));
+                this.reason = this.responseField.reason(this.headerBuffer);
+
+                if( logger.isDebugEnabled() ) logger.trace( "{} parsedResponseLine ( {}, {}, {} )"
                         , this.readerMode
-                        , this.responseField.version(this.headerBuffer)
-                        , this.responseField.statusCode(this.headerBuffer)
-                        , this.responseField.reason(this.headerBuffer)
+                        , this.version
+                        , this.status
+                        , this.reason
                 );
             }
 
             int headerSize = HeaderParser.parseHeader(this.headerBuffer, headerStart, headerBufferLen, this.headerFieldList);
+
+            if( logger.isDebugEnabled() ) logger.trace("{} parsedHeaderSize {}"
+                    , this.readerMode
+                    , headerSize
+            );
+
+            if( ReaderMode.REQUEST == this.readerMode ){
+
+                HeaderField hostField = HeaderParser.findHeader(this.headerFieldList
+                        , this.headerBuffer
+                        , HttpHeader.HOST
+                );
+
+                this.host = hostField.value(this.headerBuffer);
+                if( logger.isTraceEnabled() ) logger.trace("{} find-header, Host : {}", this.readerMode, this.host);
+
+                switch (this.method ){
+                    case "GET" :
+                    case "HEAD" :
+                    case "OPTIONS" :
+                    case "DELETE" :
+                    case "TRACE" :
+                        this.bodyMode = BodyMode.NONE;
+                        break;
+                }
+
+            } else {
+
+                if ((this.status >= 100 && this.status < 200)
+                        || this.status == 204
+                        || this.status == 304) {
+
+                    this.bodyMode = BodyMode.NONE;
+                }
+
+            }
+
+            //chunked
+            if( BodyMode.NULL == this.bodyMode ){
+                HeaderField transferEncodingField = HeaderParser.findHeader(this.headerFieldList
+                        , this.headerBuffer
+                        , HttpHeader.TRANSFER_ENCODING
+                );
+                if( transferEncodingField!=null ){
+                    String transferEncodingVal = transferEncodingField.value(this.headerBuffer);
+                    if( "chunked".equals(transferEncodingVal) ) this.bodyMode = BodyMode.CHUNKED;
+                    if( logger.isTraceEnabled() ) logger.trace("{}, Transfer-Encoding : {}", this.readerMode, transferEncodingVal);
+                } else {
+                    if( logger.isTraceEnabled() ) logger.trace("{}, Transfer-Encoding : NULL", this.readerMode);
+                }
+            }
+
+            //content-length
+            if( BodyMode.NULL == this.bodyMode ) {
+                HeaderField contentLengthField = HeaderParser.findHeader(this.headerFieldList
+                        , this.headerBuffer
+                        , HttpHeader.CONTENT_LENGTH
+                );
+                if( contentLengthField!=null ){
+                    this.contentLength = Integer.parseInt(contentLengthField.value(this.headerBuffer));
+                    this.bodyMode = BodyMode.CONTENT_LENGTH;
+                    if( logger.isTraceEnabled() ) logger.trace("{}, Content-Length : {}", this.readerMode, this.contentLength);
+                } else {
+                    if( logger.isTraceEnabled() ) logger.trace("{}, Content-Length : NULL", this.readerMode);
+                }
+            }
+
+            if( logger.isTraceEnabled() ) logger.trace( "{} bodyMode : {}", this.readerMode, this.bodyMode);
 
             return idx;
         }

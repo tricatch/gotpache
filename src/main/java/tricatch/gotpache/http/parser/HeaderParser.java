@@ -141,5 +141,34 @@ public class HeaderParser {
 
         return toHeaderFiles.size();
     }
+
+    public static HeaderField findHeader(List<HeaderField> headerFieldList, byte[] buffer, byte[] key) {
+
+        for (HeaderField field : headerFieldList) {
+
+            int keyLen = field.keyEnd - field.keyStart;
+            if (keyLen != key.length) continue;
+
+            boolean match = true;
+            int p = field.keyStart;
+            for (int i = 0; i < key.length; i++) {
+                byte b1 = buffer[p + i];
+                byte b2 = key[i];
+
+                if (b1 >= 'A' && b1 <= 'Z') b1 += 32;
+                if (b2 >= 'A' && b2 <= 'Z') b2 += 32;
+
+                if (b1 != b2) {
+                    match = false;
+                    break;
+                }
+            }
+
+            if (match) {
+                return field;
+            }
+        }
+        return null;
+    }
 }
 
