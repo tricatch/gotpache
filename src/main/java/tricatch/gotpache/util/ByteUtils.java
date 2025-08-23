@@ -1,8 +1,14 @@
 package tricatch.gotpache.util;
 
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.VarHandle;
+import java.nio.ByteOrder;
 import java.util.Arrays;
 
 public class ByteUtils {
+
+    private static final int CRLFCRLF = 0x0D0A0D0A;
+    private static final char[] HEX_ARRAY = "0123456789ABCDEF".toCharArray();
 
     public static boolean startsWith(byte[] source, byte[] match) {
         return startsWith(source, 0, match);
@@ -69,5 +75,54 @@ public class ByteUtils {
         System.arraycopy( src, from, tmp, 0, tmp.length );
 
         return tmp;
+    }
+
+
+    public static int indexOfCRLFCRLF(byte[] buf, int start, int end) {
+
+        if (end - start < 4) return -1;
+
+        int pos = Math.max(0, start - 3);
+
+        for (int i = pos; i <= end - 4; i++) {
+
+            if (buf[i] == '\r'
+                    && buf[i + 1] == '\n'
+                    && buf[i + 2] == '\r'
+                    && buf[i + 3] == '\n')
+            {
+                return i;
+            }
+        }
+
+        return -1;
+    }
+
+
+    public static int indexOfCRLF(byte[] buf, int start, int end) {
+
+        for (int i = start; i < end - 1; i++) {
+
+            if (buf[i] == '\r'
+                    && buf[i + 1] == '\n')
+            {
+                return i;
+            }
+        }
+
+        return -1;
+    }
+
+    public static String toHexPretty(byte[] bytes, int start, int end) {
+        if (bytes == null || start < 0 || end > bytes.length || start >= end) {
+            return "";
+        }
+        StringBuilder sb = new StringBuilder((end - start) * 3);
+        for (int i = start; i < end; i++) {
+            sb.append(HEX_ARRAY[(bytes[i] >> 4) & 0x0F]);
+            sb.append(HEX_ARRAY[bytes[i] & 0x0F]);
+            if (i < end - 1) sb.append(' ');
+        }
+        return sb.toString();
     }
 }

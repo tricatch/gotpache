@@ -22,7 +22,7 @@ public abstract class HttpInputStream {
     protected int contentLength = -1;
     protected boolean chunked = false;
 
-    protected byte[] headerBuffer = new byte[HTTP.HEADER_FULL_SIZE];
+    protected byte[] headerBuffer = new byte[HTTP.HEADER_BUFFER_SIZE];
     protected int endOfHeader = 0;
     protected int offset = 0;
     protected int idxHeader = 0;

@@ -5,7 +5,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import tricatch.gotpache.http.HTTP;
+import tricatch.gotpache.http.io.ReaderMode;
 import tricatch.gotpache.http.HttpMode;
+import tricatch.gotpache.http.io.HttpBufferedReader;
 import tricatch.gotpache.http.io.HttpInputStream;
 import tricatch.gotpache.http.io.ServerResponse;
 import tricatch.gotpache.util.ByteUtils;
@@ -57,12 +59,41 @@ public class PassExecutor implements Runnable {
 
             this.clientOut = this.clientSocket.getOutputStream();
 
-            //100. reader header from client
-            this.clientReq = readClinetRequest(this.clientSocket.getInputStream());
+            HttpBufferedReader httpReqBufferedReader = new HttpBufferedReader(ReaderMode.REQUEST, this.clientSocket.getInputStream());
 
-            this.serverSocket = createServerSocket();
+           int readReqHeaderLen = httpReqBufferedReader.readHeader();
+           if(logger.isDebugEnabled() ) logger.debug( "read-reg-header-length={}", readReqHeaderLen);
+
+            //100. reader header from client
+            //this.clientReq = readClinetRequest(this.clientSocket.getInputStream());
+
+            //this.serverSocket = createServerSocket();
+
+            this.serverSocket = SocketUtils.createHttp("127.0.0.1", 8888, 1000, 1000 );
             this.serverIn = this.serverSocket.getInputStream();
             this.serverOut = this.serverSocket.getOutputStream();
+
+            if(logger.isDebugEnabled() ) logger.debug( "write-reg-header-length={}", readReqHeaderLen);
+            this.serverOut.write(httpReqBufferedReader.getHeaderBuffer(), 0, readReqHeaderLen);
+
+            HttpBufferedReader httpResBufferedReader = new HttpBufferedReader(ReaderMode.RESPONSE, this.serverIn);
+
+            int readResHeaderLen = httpResBufferedReader.readHeader();
+            if(logger.isDebugEnabled() ) logger.debug( "read-res-header-length={}", readResHeaderLen);
+
+
+            if( true ) throw new IOException("XXXXX" );
+
+//            logger.trace("write headers");
+//            serverOut.flush();
+//
+//            logger.trace("read res-headers");
+//            HttpBufferedReader httpResBufferedReader = new HttpBufferedReader(this.serverIn);
+//
+//            List<byte[]> resHeaders = httpResBufferedReader.readHeader();
+//
+
+            if( true ) throw new IOException("XXXXX" );
 
             //200. write header to server
             HttpMode httpMode = pipeRequestHeader();

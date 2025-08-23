@@ -2,8 +2,8 @@ package tricatch.gotpache.http;
 
 public class HTTP {
 
-    public static final int HEADER_FULL_SIZE = 1024 * 16;
-    public static final int BODY_BUFFER_SIZE = 1024 * 8;
+    public static final int HEADER_BUFFER_SIZE = 1024 * 16;
+    public static final int BODY_BUFFER_SIZE = 1024 * 16;
 
     public static final int PIPE_REQ_WAIT_SLEEP = 50;
     public static final int PIPE_REQ_WAIT_MAX = 10;
