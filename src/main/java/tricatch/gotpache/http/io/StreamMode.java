@@ -1,6 +1,6 @@
 package tricatch.gotpache.http.io;
 
-public enum ReaderMode {
+public enum StreamMode {
     REQUEST
     , RESPONSE
 }
