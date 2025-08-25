@@ -4,7 +4,7 @@ import io.github.azagniotov.matcher.AntPathMatcher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import tricatch.gotpache.http.field.Chunk;
+import tricatch.gotpache.http.*;
 import tricatch.gotpache.http.io.*;
 import tricatch.gotpache.util.ByteUtils;
 import tricatch.gotpache.util.SocketUtils;
@@ -20,13 +20,12 @@ public class PassExecutor implements Runnable {
 
 
     private Socket clientSocket = null;
-    private HttpBufferedReader clientIn = null;
-    private HttpBufferedWriter clientOut = null;
+    private HttpRequestReader clientIn = null;
+    private HttpResponseWriter clientOut = null;
 
     private Socket serverSocket = null;
-    private HttpBufferedWriter serverOut = null;
-    private HttpBufferedReader serverIn = null;
-    //private ServerResponse serverRes = null;
+    private HttpRequestWriter serverOut = null;
+    private HttpResponseReader serverIn = null;
 
     private VirtualHosts virtualHosts;
     private int connectTimeout = 0;
@@ -51,100 +50,61 @@ public class PassExecutor implements Runnable {
                 logger.trace("read from socket - h{}", clientSocket.hashCode());
             }
 
-            clientIn = new HttpBufferedReader(StreamMode.REQUEST, clientSocket.getInputStream());
-            clientOut = new HttpBufferedWriter(StreamMode.RESPONSE, clientSocket.getOutputStream());
+            clientIn = new HttpRequestReader(clientSocket.getInputStream());
+            clientOut = new HttpResponseWriter(clientSocket.getOutputStream());
 
-           int readReqHeaderLen = clientIn.readHeader();
-           if(logger.isDebugEnabled() ){
-               logger.debug( "read-reg-header-length={}", readReqHeaderLen);
-           }
+            //read-req-header
+            RequestHeader requestHeader = clientIn.readHeader();
 
             //create socket - url matched
-            serverSocket = createServerSocket(clientIn.getHost(), clientIn.getPath());
-            serverIn = new HttpBufferedReader(StreamMode.RESPONSE, serverSocket.getInputStream());
-            serverOut = new HttpBufferedWriter(StreamMode.REQUEST, serverSocket.getOutputStream());
+            serverSocket = createServerSocket(requestHeader.host(), requestHeader.path());
+            serverIn = new HttpResponseReader(serverSocket.getInputStream());
+            serverOut = new HttpRequestWriter(serverSocket.getOutputStream());
 
-            if(logger.isDebugEnabled() ){
-                logger.debug( "write-reg-header-length={}", readReqHeaderLen);
-            }
-            serverOut.write(clientIn.getHeaderBuffer(), 0, readReqHeaderLen);
+            //write-req-header
+            serverOut.writeHeader(requestHeader);
 
-            int readResHeaderLen = serverIn.readHeader();
-            if(logger.isDebugEnabled() ){
-                logger.debug( "read-res-header-length={}", readResHeaderLen);
-            }
+            //read-res-header
+            ResponseHeader responseHeader = serverIn.readHeader();
+            BodyStream bodyStream = serverIn.getBodyStream(responseHeader);
 
-            if(logger.isDebugEnabled() ){
-                logger.debug( "write-res-header-length={}", readResHeaderLen);
-            }
-            clientOut.write(serverIn.getHeaderBuffer(), 0, serverIn.getHeaderBufferLen());
+            //write-res-header
+            clientOut.writeHeader(responseHeader);
 
-            if( BodyMode.CHUNKED == serverIn.getBodyMode() ){
-
-                int writeLen = 0;
-
-                for(;;) {
-
-                    if( logger.isTraceEnabled() ){
-                        logger.trace("body-buffer\n{}"
-                                , ByteUtils.toHexPretty(this.serverIn.getBodyBuffer()
-                                        , this.serverIn.getBodyBufferPos()
-                                        , this.serverIn.getBodyBufferLen()
-                                        )
-                        );
-                    }
-
-                    Chunk chunk = serverIn.readChunk();
-                    int readChunkLength = 0;
-                    if(logger.isDebugEnabled()){
-                        logger.debug("chunk-size : " + chunk.size);
-                    }
-
-                    //chunk-size-block
-                    writeLen = chunk.end - chunk.start + 2; // CRLF
-                    clientOut.write(serverIn.getBodyBuffer()
-                            , serverIn.getBodyBufferPos()
-                            , writeLen
+            logger.debug( "buffer - index ( {} - {} ), full-raw\n{}"
+                    , serverIn.getBufferPos()
+                    , serverIn.getBufferEnd()
+                    , ByteUtils.toHexPretty(serverIn.getBuffer(), 0,  serverIn.getBufferEnd())
                     );
-                    serverIn.moveBodyBufferPosBy(writeLen);
 
-                    //complete-chunk
-                    if( chunk.size == 0 ){
-                        writeLen = 2; //CRLF
-                        clientOut.write(serverIn.getBodyBuffer()
-                                , serverIn.getBodyBufferPos()
-                                , writeLen
-                        );
-                        clientOut.flush();
-                        serverIn.moveBodyBufferPosBy(writeLen);
-                        break;
-                    }
 
-                    //copy-remain-buffer
-                    int remainBuffer = serverIn.getBodyBufferLen() - serverIn.getBodyBufferPos();
-                    writeLen = Math.min(remainBuffer, chunk.size);
-                    if (writeLen > 0) {
-                        readChunkLength += writeLen;
-                        clientOut.write(serverIn.getBodyBuffer()
-                                , serverIn.getBodyBufferPos()
-                                , writeLen
-                        );
-                        serverIn.moveBodyBufferPosBy(writeLen);
-                    }
+            for(;;) {
+                //read-chunk-size
+                ChunkSize chunkSize = serverIn.readChunkSize();
 
-                    //end-of-chunk
-                    if( readChunkLength >= chunk.size ){
-                        writeLen = 2; //CRLF
-                        clientOut.write(serverIn.getBodyBuffer()
-                                , serverIn.getBodyBufferPos()
-                                , writeLen
-                        );
-                        serverIn.moveBodyBufferPosBy(writeLen);
-                    }
+                //write-chunk-size
+                clientOut.writeChunkSize(chunkSize);
 
-                    clientOut.flush();
+                if( chunkSize.size == 0 ){
+                    ChunkEnd chunkEnd = serverIn.readChunkEnd();
+                    clientOut.writeChunkEnd(chunkEnd);
+                    break;
+                }
+
+                for (;;) {
+
+                    //read-chunk-stream
+                    ChunkStream chunkStream = serverIn.readChunkStream(chunkSize);
+
+                    //write-chunk-stream
+                    clientOut.writeChunkStream(chunkStream);
+
+                    if( chunkStream.last ) break;
                 }
             }
+
+
+            logger.debug("END");
 
         } catch (IOException e) {
             logger.error( e.getMessage(), e);

@@ -1,15 +1,15 @@
 package tricatch.gotpache.http.parser;
 
-import tricatch.gotpache.http.field.HeaderField;
-import tricatch.gotpache.http.field.RequestField;
-import tricatch.gotpache.http.field.ResponseField;
+import tricatch.gotpache.http.HeaderField;
+import tricatch.gotpache.http.RequestHeader;
+import tricatch.gotpache.http.ResponseHeader;
 import tricatch.gotpache.util.ByteUtils;
 
 import java.util.List;
 
 public class HeaderParser {
 
-    public static int parseRequestLine(byte[] buffer, final int start, final int end, RequestField toRequestField){
+    public static int parseRequestLine(byte[] buffer, final int start, final int end, RequestHeader toRequestHeader){
 
         int lineEnd = ByteUtils.indexOfCRLF(buffer, start, end);
 
@@ -34,16 +34,16 @@ public class HeaderParser {
         if (firstSpace > 0 && secondSpace > firstSpace) {
 
             //method
-            toRequestField.methodStart = pos;
-            toRequestField.methodEnd = firstSpace;
+            toRequestHeader.methodStart = pos;
+            toRequestHeader.methodEnd = firstSpace;
 
             //path
-            toRequestField.pathStart = firstSpace + 1;
-            toRequestField.pathEnd = secondSpace;
+            toRequestHeader.pathStart = firstSpace + 1;
+            toRequestHeader.pathEnd = secondSpace;
 
             // version
-            toRequestField.versionStart = secondSpace + 1;
-            toRequestField.versionEnd = lineEnd;
+            toRequestHeader.versionStart = secondSpace + 1;
+            toRequestHeader.versionEnd = lineEnd;
 
             return lineEnd + 2;
 
@@ -53,7 +53,7 @@ public class HeaderParser {
 
     }
 
-    public static int parseStatusLine(byte[] buffer, final int start, final int end, ResponseField toResponseField) {
+    public static int parseResponseLine(byte[] buffer, final int start, final int end, ResponseHeader toResponseHeader) {
 
         int lineEnd = ByteUtils.indexOfCRLF(buffer, start, end);
         if (lineEnd <= 0) return lineEnd;
@@ -74,25 +74,25 @@ public class HeaderParser {
 
         if (firstSpace > 0) {
             // HTTP-Version
-            toResponseField.versionStart = pos;
-            toResponseField.versionEnd = firstSpace;
+            toResponseHeader.versionStart = pos;
+            toResponseHeader.versionEnd = firstSpace;
 
             if (secondSpace > firstSpace) {
                 // Status-Code
-                toResponseField.statusCodeStart = firstSpace + 1;
-                toResponseField.statusCodeEnd = secondSpace;
+                toResponseHeader.statusCodeStart = firstSpace + 1;
+                toResponseHeader.statusCodeEnd = secondSpace;
 
                 // Reason-Phrase
-                toResponseField.reasonStart = secondSpace + 1;
-                toResponseField.reasonEnd = lineEnd;
+                toResponseHeader.reasonStart = secondSpace + 1;
+                toResponseHeader.reasonEnd = lineEnd;
             } else {
 
-                toResponseField.statusCodeStart = firstSpace + 1;
-                toResponseField.statusCodeEnd = lineEnd;
+                toResponseHeader.statusCodeStart = firstSpace + 1;
+                toResponseHeader.statusCodeEnd = lineEnd;
 
                 // No-Reason-Phrase
-                toResponseField.reasonStart = -1;
-                toResponseField.reasonEnd = -1;
+                toResponseHeader.reasonStart = -1;
+                toResponseHeader.reasonEnd = -1;
             }
 
             return lineEnd + 2; // CRLF까지 포함
@@ -102,9 +102,9 @@ public class HeaderParser {
         }
     }
 
-    public static int parseHeader(byte[] buffer, final int start, final int end, List<HeaderField> toHeaderFiles){
+    public static void parseHeader(byte[] buffer, final int start, final int end, List<HeaderField> toHeaderFileFields){
 
-        toHeaderFiles.clear();
+        toHeaderFileFields.clear();
 
         int pos = start;
         int headerEnd = end;
@@ -133,13 +133,11 @@ public class HeaderParser {
             while (valueStart < valueEnd && (buffer[valueStart] == ' ' || buffer[valueStart] == '\t')) valueStart++;
             while (valueEnd > valueStart && (buffer[valueEnd - 1] == ' ' || buffer[valueEnd - 1] == '\t')) valueEnd--;
 
-            toHeaderFiles.add(new HeaderField(keyStart, keyEnd, valueStart, valueEnd));
+            toHeaderFileFields.add(new HeaderField(keyStart, keyEnd, valueStart, valueEnd));
 
             pos = lineEnd + 2;
         }
 
-
-        return toHeaderFiles.size();
     }
 
     public static HeaderField findHeader(List<HeaderField> headerFieldList, byte[] buffer, byte[] key) {
@@ -170,5 +168,24 @@ public class HeaderParser {
         }
         return null;
     }
+
+    public static String valueAsString(List<HeaderField> headerFieldList, byte[] buffer, byte[] key) {
+
+        HeaderField headerField = findHeader(headerFieldList, buffer, key);
+
+        if( headerField == null ) return null;
+
+        return ByteUtils.toString(buffer, headerField.valueStart, headerField.valueEnd);
+    }
+
+    public static int valueAsInt(List<HeaderField> headerFieldList, byte[] buffer, byte[] key) {
+
+        HeaderField headerField = findHeader(headerFieldList, buffer, key);
+
+        if( headerField == null ) return -1;
+
+        return ByteUtils.toInt(buffer, headerField.valueStart, headerField.valueEnd);
+    }
+
 }
 

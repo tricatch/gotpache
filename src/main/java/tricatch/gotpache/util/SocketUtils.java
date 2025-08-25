@@ -19,6 +19,8 @@ public class SocketUtils {
 
         if( port<0 ) port = 80;
 
+        if (logger.isDebugEnabled()) logger.debug("createHttp: host={}, port={}", host, port);
+
         InetSocketAddress endpoint = new InetSocketAddress(host, port);
 
         Socket socket = new Socket();
@@ -30,9 +32,9 @@ public class SocketUtils {
 
     public static Socket createHttps(String domain, String host, int port, int connectTimeout, int readTimeout) throws IOException {
 
-        if (logger.isDebugEnabled()) logger.debug("createHttps: domain={}, host={}, port={}", domain, host, port);
-
         if( port<0 ) port = 443;
+
+        if (logger.isDebugEnabled()) logger.debug("createHttps: domain={}, host={}, port={}", domain, host, port);
 
         InetSocketAddress endpoint = new InetSocketAddress(host, port);
 

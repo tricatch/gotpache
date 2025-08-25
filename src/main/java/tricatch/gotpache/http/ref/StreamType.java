@@ -1,6 +1,6 @@
-package tricatch.gotpache.http.io;
+package tricatch.gotpache.http.ref;
 
-public enum BodyMode {
+public enum StreamType {
     NONE
     , CONTENT_LENGTH
     , CHUNKED

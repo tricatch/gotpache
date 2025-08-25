@@ -126,12 +126,11 @@ public class ByteUtils {
         return sb.toString();
     }
 
-    public static int parseHex(byte[] buf, int start, int end) {
-
+    public static int hexToInt(byte[] buf, int start, int end) {
         int result = 0;
 
         for (int i = start; i < end; i++) {
-            int c = buf[i];
+            int c = buf[i] & 0xFF;
             if (c >= '0' && c <= '9') {
                 result = (result << 4) + (c - '0');
             } else if (c >= 'a' && c <= 'f') {
@@ -141,6 +140,33 @@ public class ByteUtils {
             } else {
                 throw new IllegalArgumentException("Invalid HEX: " + (char) c);
             }
+        }
+
+        return result;
+    }
+
+    public static String toString(byte[] buf, int start, int end){
+        return new String(buf, start, end-start);
+    }
+
+    public static int toInt(byte[] buf, int start, int end) {
+
+        if (buf == null || start < 0 || end > buf.length || start >= end || end-start>=10 ) {
+            return -1;
+        }
+
+        int result = 0;
+
+        for (int i = start; i < end; i++) {
+            byte b = buf[i];
+
+            if (b < '0' || b > '9') {
+                return -1;
+            }
+
+            int digit = b - '0';
+
+            result = result * 10 + digit;
         }
 
         return result;
