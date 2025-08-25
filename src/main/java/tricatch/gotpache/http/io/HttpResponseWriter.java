@@ -27,6 +27,11 @@ public class HttpResponseWriter {
         out.flush();
     }
 
+    private void writeAndFlush(byte[] buf, int start, int end) throws IOException {
+
+        out.write(buf, start, (end-start) );
+        out.flush();
+    }
 
     public void writeHeader(ResponseHeader responseHeader) throws IOException {
 
@@ -37,9 +42,7 @@ public class HttpResponseWriter {
             );
         }
 
-        out.write(responseHeader.raw);
-        out.flush();
-
+        writeAndFlush(responseHeader.raw, 0, responseHeader.raw.length);
     }
 
     public void writeChunkSize(ChunkSize chunkSize) throws IOException {
@@ -51,8 +54,7 @@ public class HttpResponseWriter {
             );
         }
 
-        out.write(chunkSize.buffer, chunkSize.start, chunkSize.end);
-        out.flush();
+        writeAndFlush(chunkSize.buffer, chunkSize.start, chunkSize.end);
     }
 
     public void writeChunkStream(ChunkStream chunkStream) throws IOException {
@@ -64,8 +66,7 @@ public class HttpResponseWriter {
             );
         }
 
-        out.write(chunkStream.buffer, chunkStream.start, chunkStream.end);
-        out.flush();
+        writeAndFlush(chunkStream.buffer, chunkStream.start, chunkStream.end);
     }
 
     public void writeChunkEnd(ChunkEnd chunkEnd) throws IOException {
@@ -77,8 +78,7 @@ public class HttpResponseWriter {
             );
         }
 
-        out.write(chunkEnd.buffer, chunkEnd.start, chunkEnd.end);
-        out.flush();
+        writeAndFlush(chunkEnd.buffer, chunkEnd.start, chunkEnd.end);
     }
 
 }
