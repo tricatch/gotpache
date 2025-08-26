@@ -78,7 +78,7 @@ public class PassExecutor implements Runnable {
                     );
 
 
-            for(;;) {
+            for(int i1=0;;i1++) {
                 //read-chunk-size
                 ChunkSize chunkSize = serverIn.readChunkSize();
 
@@ -91,7 +91,9 @@ public class PassExecutor implements Runnable {
                     break;
                 }
 
-                for (;;) {
+                for (int i2=0;;i2++) {
+
+                    logger.trace("----- {}/{} -----", i1, i2);
 
                     //read-chunk-stream
                     ChunkStream chunkStream = serverIn.readChunkStream(chunkSize);

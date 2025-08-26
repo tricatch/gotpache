@@ -2,7 +2,8 @@ package tricatch.gotpache.http.ref;
 
 public class DEF {
 
-    public static final int MAX_BUFFER = 1024 * 16; //16K
+    public static final int MAX_BUFFER = 16; //16K
+    public static final int MAX_BUFFER_BYTES = 1024 * MAX_BUFFER;
 
     public static class HEADER {
         public static final byte[] HOST = "Host".getBytes();

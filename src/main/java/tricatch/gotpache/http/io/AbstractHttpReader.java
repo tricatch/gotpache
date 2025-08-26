@@ -204,8 +204,19 @@ abstract class AbstractHttpReader {
         printBufferInfo( "readChunkStream",true);
 
         int remaining = this.bufferEnd - this.bufferPos;
-        int readMore = chunkSize.size + 2 /*CRLF*/ - chunkSize.read;
-        int read = Math.min(remaining, readMore);
+        int read = 0;
+
+        if( remaining <= 0){
+            int newRead = this.fillBuffer(false);
+            if( chunkSize.size < chunkSize.read + newRead ){
+                int end = ByteUtils.indexOfCRLF(this.buffer, this.bufferPos, this.bufferEnd);
+                read = end + 2;
+            } else {
+                read = newRead;
+            }
+        } else {
+            read = remaining;
+        }
 
         chunkSize.read += read;
 
@@ -248,9 +259,6 @@ abstract class AbstractHttpReader {
                 lineEnd = ByteUtils.indexOfCRLF(this.buffer, this.bufferPos, this.bufferEnd);
             }
             if( lineEnd < 0 ) throw new IllegalStateException("Chunk size block not found: missing CRLF");
-
-
-            System.out.println( "end - " + lineEnd );
 
             if( lineEnd < 0 ){
                 return null;
