@@ -4,12 +4,19 @@ import io.github.azagniotov.matcher.AntPathMatcher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import tricatch.gotpache.http.*;
-import tricatch.gotpache.http.io.*;
+import tricatch.gotpache.http.HTTP;
+import tricatch.gotpache.http.io.HeaderLines;
+import tricatch.gotpache.http.io.HttpRequest;
+import tricatch.gotpache.http.io.HttpResponse;
+import tricatch.gotpache.http.io.HttpStreamReader;
+import tricatch.gotpache.http.io.HttpStreamWriter;
+import tricatch.gotpache.server.VirtualHosts;
+import tricatch.gotpache.server.VirtualPath;
 import tricatch.gotpache.util.ByteUtils;
 import tricatch.gotpache.util.SocketUtils;
 
 import java.io.IOException;
+import java.io.OutputStream;
 import java.net.Socket;
 import java.net.URL;
 import java.util.List;
@@ -20,12 +27,12 @@ public class PassExecutor implements Runnable {
 
 
     private Socket clientSocket = null;
-    private HttpRequestReader clientIn = null;
-    private HttpResponseWriter clientOut = null;
+    private HttpStreamReader clientIn = null;
+    private HttpStreamWriter clientOut = null;
 
     private Socket serverSocket = null;
-    private HttpRequestWriter serverOut = null;
-    private HttpResponseReader serverIn = null;
+    private HttpStreamReader serverIn = null;
+    private HttpStreamWriter serverOut = null;
 
     private VirtualHosts virtualHosts;
     private int connectTimeout = 0;
@@ -50,60 +57,100 @@ public class PassExecutor implements Runnable {
                 logger.trace("read from socket - h{}", clientSocket.hashCode());
             }
 
-            clientIn = new HttpRequestReader(clientSocket.getInputStream());
-            clientOut = new HttpResponseWriter(clientSocket.getOutputStream());
+            clientIn = new HttpStreamReader(clientSocket.getInputStream());
+            clientOut = new HttpStreamWriter(clientSocket.getOutputStream());
 
             //read-req-header
-            RequestHeader requestHeader = clientIn.readHeader();
+            HeaderLines requestHeaders = new HeaderLines(HTTP.INIT_HEADER_LINES);
+            int bytesRead = clientIn.readHeaders(requestHeaders, HTTP.MAX_HEADER_LENGTH);
+            
+            if (bytesRead == -1) {
+                logger.warn("No headers received from client");
+                return;
+            }
+            
+            // Parse HTTP request
+            HttpRequest httpRequest = requestHeaders.parseHttpRequest();
+            logger.debug("Parsed request: {}", httpRequest);
+            
+            // Log request details
+            logger.info("Request: {} {} {} (Host: {}, Connection: {}, ContentLength: {}, Body: {})", 
+                       httpRequest.getMethod(), 
+                       httpRequest.getPath(), 
+                       httpRequest.getVersion(),
+                       httpRequest.getHost(),
+                       httpRequest.getConnection(),
+                       httpRequest.getContentLength(),
+                       httpRequest.getBodyStream());
 
             //create socket - url matched
-            serverSocket = createServerSocket(requestHeader.host(), requestHeader.path());
-            serverIn = new HttpResponseReader(serverSocket.getInputStream());
-            serverOut = new HttpRequestWriter(serverSocket.getOutputStream());
+            serverSocket = createServerSocket(httpRequest.getHost(), httpRequest.getPath());
+            serverIn = new HttpStreamReader(serverSocket.getInputStream());
+            serverOut = new HttpStreamWriter(serverSocket.getOutputStream());
 
-            //write-req-header
-            serverOut.writeHeader(requestHeader);
+            serverOut.writeHeaders(requestHeaders);
 
             //read-res-header
-            ResponseHeader responseHeader = serverIn.readHeader();
-            BodyStream bodyStream = serverIn.getBodyStream(responseHeader);
+            HeaderLines responseHeaders = new HeaderLines(HTTP.INIT_HEADER_LINES);
+
+            //read-res-header
+            bytesRead = serverIn.readHeaders(responseHeaders, HTTP.MAX_HEADER_LENGTH);
+
+            if (bytesRead == -1) {
+                logger.warn("No headers received from server");
+                return;
+            }
+
+            //parse-res-header
+            HttpResponse response = responseHeaders.parseHttpResponse();
+            logger.debug("Parsed response: {}", response);
 
             //write-res-header
-            clientOut.writeHeader(responseHeader);
+            clientOut.writeHeaders(responseHeaders);
 
-            logger.debug( "buffer - index ( {} - {} ), full-raw\n{}"
-                    , serverIn.getBufferPos()
-                    , serverIn.getBufferEnd()
-                    , ByteUtils.toHexPretty(serverIn.getBuffer(), 0,  serverIn.getBufferEnd())
-                    );
+            // //write-req-header
+            // serverOut.writeHeader(requestHeader);
+
+            // //read-res-header
+            // ResponseHeader responseHeader = serverIn.readHeader();
+            // BodyStream bodyStream = serverIn.getBodyStream(responseHeader);
+
+            // //write-res-header
+            // clientOut.writeHeader(responseHeader);
+
+            // logger.debug( "buffer - index ( {} - {} ), full-raw\n{}"
+            //         , serverIn.getBufferPos()
+            //         , serverIn.getBufferEnd()
+            //         , ByteUtils.toHexPretty(serverIn.getBuffer(), 0,  serverIn.getBufferEnd())
+            //         );
 
 
-            for(int i1=0;;i1++) {
-                //read-chunk-size
-                ChunkSize chunkSize = serverIn.readChunkSize();
+            // for(int i1=0;;i1++) {
+            //     //read-chunk-size
+            //     ChunkSize chunkSize = serverIn.readChunkSize();
 
-                //write-chunk-size
-                clientOut.writeChunkSize(chunkSize);
+            //     //write-chunk-size
+            //     clientOut.writeChunkSize(chunkSize);
 
-                if( chunkSize.size == 0 ){
-                    ChunkEnd chunkEnd = serverIn.readChunkEnd();
-                    clientOut.writeChunkEnd(chunkEnd);
-                    break;
-                }
+            //     if( chunkSize.size == 0 ){
+            //         ChunkEnd chunkEnd = serverIn.readChunkEnd();
+            //         clientOut.writeChunkEnd(chunkEnd);
+            //         break;
+            //     }
 
-                for (int i2=0;;i2++) {
+            //     for (int i2=0;;i2++) {
 
-                    logger.trace("----- {}/{} -----", i1, i2);
+            //         logger.trace("----- {}/{} -----", i1, i2);
 
-                    //read-chunk-stream
-                    ChunkStream chunkStream = serverIn.readChunkStream(chunkSize);
+            //         //read-chunk-stream
+            //         ChunkStream chunkStream = serverIn.readChunkStream(chunkSize);
 
-                    //write-chunk-stream
-                    clientOut.writeChunkStream(chunkStream);
+            //         //write-chunk-stream
+            //         clientOut.writeChunkStream(chunkStream);
 
-                    if( chunkStream.last ) break;
-                }
-            }
+            //         if( chunkStream.last ) break;
+            //     }
+            // }
 
 
             logger.debug("END");

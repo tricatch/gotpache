@@ -1,4 +1,4 @@
-package tricatch.gotpache.pass;
+package tricatch.gotpache.server;
 
 import io.github.tricatch.gotpache.cert.KeyTool;
 import org.slf4j.Logger;
@@ -10,7 +10,7 @@ import tricatch.gotpache.cfg.Config;
 import tricatch.gotpache.cfg.attr.Ca;
 import tricatch.gotpache.cfg.attr.Https;
 import tricatch.gotpache.exception.ConfigException;
-import tricatch.gotpache.server.AbstractServer;
+import tricatch.gotpache.pass.PassExecutor;
 
 import javax.net.ssl.KeyManager;
 import javax.net.ssl.SSLContext;
@@ -26,7 +26,7 @@ import java.security.cert.X509Certificate;
 
 public class SSLPassServer extends AbstractServer {
 
-    private static Logger logger = LoggerFactory.getLogger(tricatch.gotpache.pass.SSLPassServer.class);
+    private static Logger logger = LoggerFactory.getLogger(SSLPassServer.class);
 
     private SSLContext sslContext;
 

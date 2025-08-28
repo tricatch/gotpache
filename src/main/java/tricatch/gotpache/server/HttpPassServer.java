@@ -1,4 +1,4 @@
-package tricatch.gotpache.pass;
+package tricatch.gotpache.server;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -7,7 +7,7 @@ import tricatch.gotpache.ProxyPassServer;
 import tricatch.gotpache.cfg.Config;
 import tricatch.gotpache.cfg.attr.Http;
 import tricatch.gotpache.exception.ConfigException;
-import tricatch.gotpache.server.AbstractServer;
+import tricatch.gotpache.pass.PassExecutor;
 
 import java.net.ServerSocket;
 import java.net.Socket;

@@ -2,8 +2,27 @@ package tricatch.gotpache.http;
 
 public class HTTP {
 
-    public static final int HEADER_BUFFER_SIZE = 1024 * 16;
-    public static final int BODY_BUFFER_SIZE = 1024 * 16;
+    public static final int INIT_HEADER_LINES = 10;
+    public static final int MAX_HEADER_LENGTH = 8 * 1024;
+    public static final int BODY_BUFFER_SIZE = 16 * 1024;
+
+    public static class HEADER {
+        public static final byte[] HOST = "Host".getBytes();
+        public static final byte[] CONTENT_LENGTH = "Content-Length".getBytes();
+        public static final byte[] TRANSFER_ENCODING = "Transfer-Encoding".getBytes();
+        public static final byte[] CONNECTION = "Connection".getBytes();
+        public static final byte[] KEEP_ALIVE = "Keep-Alive".getBytes();
+    }
+
+    public enum STREAM {
+        NONE
+        , CONTENT_LENGTH
+        , CHUNKED
+        , WEBSOCKET
+        , UNTIL_CLOSE
+        , NULL
+    }
+
 
     public static final int PIPE_REQ_WAIT_SLEEP = 50;
     public static final int PIPE_REQ_WAIT_MAX = 10;

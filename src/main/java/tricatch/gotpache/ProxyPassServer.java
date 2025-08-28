@@ -10,10 +10,10 @@ import org.yaml.snakeyaml.Yaml;
 import org.yaml.snakeyaml.constructor.Constructor;
 import org.yaml.snakeyaml.representer.Representer;
 import tricatch.gotpache.cfg.Config;
-import tricatch.gotpache.pass.HttpPassServer;
-import tricatch.gotpache.pass.ProxyPassConsole;
-import tricatch.gotpache.pass.SSLPassServer;
-import tricatch.gotpache.pass.VirtualHosts;
+import tricatch.gotpache.server.HttpPassServer;
+import tricatch.gotpache.server.ProxyPassConsole;
+import tricatch.gotpache.server.SSLPassServer;
+import tricatch.gotpache.server.VirtualHosts;
 import tricatch.gotpache.util.JsonUtil;
 import tricatch.gotpache.util.VirtualHostUtil;
 

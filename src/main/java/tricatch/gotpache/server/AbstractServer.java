@@ -5,7 +5,6 @@ import org.slf4j.LoggerFactory;
 
 import tricatch.gotpache.cfg.Config;
 import tricatch.gotpache.exception.ConfigException;
-import tricatch.gotpache.pass.VirtualHosts;
 
 public abstract class AbstractServer implements Runnable {
 
