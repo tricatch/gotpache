@@ -5,6 +5,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import tricatch.gotpache.http.HTTP;
+import tricatch.gotpache.http.io.BodyStream;
+import tricatch.gotpache.http.io.ByteBuffer;
 import tricatch.gotpache.http.io.HeaderLines;
 import tricatch.gotpache.http.io.HttpRequest;
 import tricatch.gotpache.http.io.HttpResponse;
@@ -24,7 +26,6 @@ import java.util.List;
 public class PassExecutor implements Runnable {
 
     private static Logger logger = LoggerFactory.getLogger(PassExecutor.class);
-
 
     private Socket clientSocket = null;
     private HttpStreamReader clientIn = null;
@@ -107,6 +108,9 @@ public class PassExecutor implements Runnable {
 
             //write-res-header
             clientOut.writeHeaders(responseHeaders);
+
+            // Relay response body to client
+            relayResponseBody(response);
 
             // //write-req-header
             // serverOut.writeHeader(requestHeader);
@@ -282,5 +286,220 @@ public class PassExecutor implements Runnable {
 //
 //        logger.debug("WebSocket frame processing completed");
 //    }
+
+    /**
+     * Relay response body to client based on body stream type
+     * @param response HTTP response containing body stream information
+     * @throws IOException when I/O error occurs
+     */
+    private void relayResponseBody(HttpResponse response) throws IOException {
+        BodyStream bodyStream = response.getBodyStream();
+        
+        if (logger.isDebugEnabled()) {
+            logger.debug("Relaying response body with type: {}", bodyStream);
+        }
+        
+        switch (bodyStream) {
+            case NONE:
+            case NULL:
+                // No body to relay
+                if (logger.isTraceEnabled()) {
+                    logger.trace("No response body to relay");
+                }
+                break;
+                
+            case CONTENT_LENGTH:
+                relayContentLengthBody(response);
+                break;
+                
+            case CHUNKED:
+                relayChunkedBody();
+                break;
+                
+            case WEBSOCKET:
+                // WebSocket upgrade response - no body to relay
+                if (logger.isDebugEnabled()) {
+                    logger.debug("WebSocket upgrade response - no body to relay");
+                }
+                break;
+                
+            case UNTIL_CLOSE:
+                relayUntilCloseBody();
+                break;
+                
+            default:
+                logger.warn("Unknown body stream type: {}", bodyStream);
+                break;
+        }
+    }
+    
+    /**
+     * Relay content-length based response body
+     * @param response HTTP response
+     * @throws IOException when I/O error occurs
+     */
+    private void relayContentLengthBody(HttpResponse response) throws IOException {
+        Integer contentLength = response.getContentLength();
+        if (contentLength == null || contentLength <= 0) {
+            if (logger.isDebugEnabled()) {
+                logger.debug("No content length or zero content length");
+            }
+            return;
+        }
+        
+        if (logger.isDebugEnabled()) {
+            logger.debug("Relaying content-length body: {} bytes", contentLength);
+        }
+        
+        byte[] buffer = new byte[HTTP.BODY_BUFFER_SIZE];
+        int remainingBytes = contentLength;
+        
+        while (remainingBytes > 0) {
+            int bytesToRead = Math.min(buffer.length, remainingBytes);
+            int bytesRead = serverIn.read(buffer, 0, bytesToRead);
+            
+            if (bytesRead == -1) {
+                logger.warn("Unexpected end of stream while reading content-length body");
+                break;
+            }
+            
+            clientOut.write(buffer, 0, bytesRead);
+            remainingBytes -= bytesRead;
+            
+            if (logger.isTraceEnabled()) {
+                logger.trace("Relayed {} bytes, remaining: {}", bytesRead, remainingBytes);
+            }
+        }
+        
+        clientOut.flush();
+        if (logger.isDebugEnabled()) {
+            logger.debug("Content-length body relay completed");
+        }
+    }
+    
+    /**
+     * Relay chunked transfer encoding response body
+     * @throws IOException when I/O error occurs
+     */
+    private void relayChunkedBody() throws IOException {
+        if (logger.isDebugEnabled()) {
+            logger.debug("Relaying chunked response body");
+        }
+        
+        byte[] buffer = new byte[HTTP.BODY_BUFFER_SIZE];
+        
+        while (true) {
+            // Read chunk size line
+            ByteBuffer chunkSizeBuffer = new ByteBuffer(new byte[128]);
+            int bytesRead = serverIn.readLine(chunkSizeBuffer, 128);
+            
+            if (bytesRead == -1) {
+                logger.warn("Unexpected end of stream while reading chunk size");
+                break;
+            }
+            
+            String chunkSizeLine = new String(chunkSizeBuffer.getBuffer(), 0, chunkSizeBuffer.getLength());
+            int semicolonIndex = chunkSizeLine.indexOf(';');
+            if (semicolonIndex > 0) {
+                chunkSizeLine = chunkSizeLine.substring(0, semicolonIndex);
+            }
+            
+            int chunkSize;
+            try {
+                chunkSize = Integer.parseInt(chunkSizeLine.trim(), 16);
+            } catch (NumberFormatException e) {
+                logger.error("Invalid chunk size: {}", chunkSizeLine);
+                break;
+            }
+
+            if (logger.isTraceEnabled()) {
+                logger.trace("Chunk size: {}", chunkSize);
+            }
+
+            // Write chunk size to client
+            clientOut.write(chunkSizeBuffer.getBuffer(), 0, chunkSizeBuffer.getLength());
+            clientOut.write(HTTP.CRLF);
+            
+            if (chunkSize == 0) {
+                // End of chunked body - read and relay trailer headers
+                if (logger.isDebugEnabled()) {
+                    logger.debug("End of chunked body (chunk size 0) - reading trailer headers");
+                }
+                
+                clientOut.write(HTTP.CRLF);
+                clientOut.flush();
+                break;
+            }
+            
+            // Relay chunk data
+            int remainingBytes = chunkSize;
+            while (remainingBytes > 0) {
+                int bytesToRead = Math.min(buffer.length, remainingBytes);
+                bytesRead = serverIn.read(buffer, 0, bytesToRead);
+                
+                if (bytesRead == -1) {
+                    logger.warn("Unexpected end of stream while reading chunk data");
+                    break;
+                }
+                clientOut.write(buffer, 0, bytesRead);
+                clientOut.flush();
+                remainingBytes -= bytesRead;
+                
+                if (logger.isTraceEnabled()) {
+                    logger.trace("Relayed {} bytes of chunk, remaining: {}", bytesRead, remainingBytes);
+                }
+            }
+            
+            // Read and relay chunk end (CRLF)
+            int cr = serverIn.read();
+            int lf = serverIn.read();
+            if (cr == '\r' && lf == '\n') {
+                clientOut.write(HTTP.CRLF);
+                clientOut.flush();
+            } else {
+                logger.warn("Invalid chunk end marker");
+                break;
+            }
+        }
+        
+        clientOut.flush();
+        if (logger.isDebugEnabled()) {
+            logger.debug("Chunked body relay completed");
+        }
+    }
+    
+    /**
+     * Relay response body until connection close
+     * @throws IOException when I/O error occurs
+     */
+    private void relayUntilCloseBody() throws IOException {
+        if (logger.isDebugEnabled()) {
+            logger.debug("Relaying until-close response body");
+        }
+        
+        byte[] buffer = new byte[HTTP.BODY_BUFFER_SIZE];
+        int totalBytesRelayed = 0;
+        
+        while (true) {
+            int bytesRead = serverIn.read(buffer);
+            
+            if (bytesRead == -1) {
+                // End of stream
+                break;
+            }
+            
+            clientOut.write(buffer, 0, bytesRead);
+            totalBytesRelayed += bytesRead;
+            
+            if (logger.isTraceEnabled()) {
+                logger.trace("Relayed {} bytes, total: {}", bytesRead, totalBytesRelayed);
+            }
+        }
+        
+        clientOut.flush();
+        if (logger.isDebugEnabled()) {
+            logger.debug("Until-close body relay completed, total bytes: {}", totalBytesRelayed);
+        }
+    }
 
 }
