@@ -9,7 +9,7 @@ import tricatch.gotpache.cfg.Config;
 import tricatch.gotpache.cfg.attr.Ca;
 import tricatch.gotpache.cfg.attr.Https;
 import tricatch.gotpache.exception.ConfigException;
-import tricatch.gotpache.pass.PassExecutor;
+import tricatch.gotpache.pass.PassRequestExecutor;
 
 import javax.net.ssl.KeyManager;
 import javax.net.ssl.SSLContext;
@@ -105,7 +105,7 @@ public class SSLPassServer extends AbstractServer {
 
                 socket.setSoTimeout(https.getReadTimeout());
 
-                VThreadExecutor.run(new PassExecutor(socket, this.virtualHosts, https.getConnectTimeout(), https.getReadTimeout()));
+                VThreadExecutor.run(new PassRequestExecutor(socket, this.virtualHosts, https.getConnectTimeout(), https.getReadTimeout()));
             }
 
         } catch (Exception e) {

@@ -6,8 +6,13 @@ public class VThreadExecutor {
     
     private static final AtomicLong threadCounter = new AtomicLong(0);
 
-    public static void run(Runnable runnable) {
+    public static Thread run(Runnable runnable) {
         long threadNumber = threadCounter.incrementAndGet();
-        Thread.ofVirtual().name("vt-pass-" + threadNumber).start(runnable);
+        return Thread.ofVirtual().name("vt-pass-" + threadNumber).start(runnable);
+    }
+
+    public static Thread run(Runnable runnable, String name) {
+        long threadNumber = threadCounter.incrementAndGet();
+        return Thread.ofVirtual().name(name).start(runnable);
     }
 }

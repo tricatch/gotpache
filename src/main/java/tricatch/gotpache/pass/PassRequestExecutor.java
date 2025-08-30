@@ -6,12 +6,11 @@ import org.slf4j.LoggerFactory;
 
 import tricatch.gotpache.http.HTTP;
 import tricatch.gotpache.http.io.BodyStream;
-import tricatch.gotpache.http.io.ByteBuffer;
 import tricatch.gotpache.http.io.HeaderLines;
 import tricatch.gotpache.http.io.HttpRequest;
-import tricatch.gotpache.http.io.HttpResponse;
 import tricatch.gotpache.http.io.HttpStreamReader;
 import tricatch.gotpache.http.io.HttpStreamWriter;
+import tricatch.gotpache.server.VThreadExecutor;
 import tricatch.gotpache.server.VirtualHosts;
 import tricatch.gotpache.server.VirtualPath;
 import tricatch.gotpache.util.SocketUtils;
@@ -21,10 +20,11 @@ import java.io.IOException;
 import java.net.Socket;
 import java.net.URL;
 import java.util.List;
+import java.util.concurrent.locks.LockSupport;
 
-public class PassExecutor implements Runnable {
+public class PassRequestExecutor implements Runnable {
 
-    private static final Logger logger = LoggerFactory.getLogger(PassExecutor.class);
+    private static final Logger logger = LoggerFactory.getLogger(PassRequestExecutor.class);
 
     private Socket clientSocket;
     private HttpStreamReader clientIn = null;
@@ -40,7 +40,14 @@ public class PassExecutor implements Runnable {
 
     private VirtualPath virtualPath = null;
 
-    public PassExecutor(Socket clientSocket, VirtualHosts virtualHosts, int connectTimeout, int readTimeout){
+    private boolean stop = false;
+
+    private Thread thisThread = null;
+    private Thread child = null;
+
+    private String rid = null;
+
+    public PassRequestExecutor(Socket clientSocket, VirtualHosts virtualHosts, int connectTimeout, int readTimeout){
 
         this.clientSocket = clientSocket;
         this.virtualHosts = virtualHosts;
@@ -48,104 +55,112 @@ public class PassExecutor implements Runnable {
         this.readTimeout = readTimeout;
     }
 
+    public void setStop(boolean stop){
+        this.stop = stop;
+    }
+
+    public boolean isStop(){
+        return this.stop;
+    }
+
+    public String getRid(){
+        return this.rid;
+    }
+
+    public Thread getThread(){
+        return this.thisThread;
+    }
+
     @Override
     public void run() {
 
-        String rid = SysUtil.generateRequestId();
-
         try {
-
+            thisThread = Thread.currentThread();
             clientIn = new HttpStreamReader(clientSocket.getInputStream(), HTTP.BODY_BUFFER_SIZE);
             clientOut = new HttpStreamWriter(clientSocket.getOutputStream());
 
-            //read-req-header
-            HeaderLines requestHeaders = new HeaderLines(HTTP.INIT_HEADER_LINES);
-            int bytesRead = clientIn.readHeaders(requestHeaders, HTTP.MAX_HEADER_LENGTH);
-            
-            if (bytesRead == -1) {
-                logger.warn("{}, No headers received from client"
-                        , rid
-                );
-                return;
+            while(true) {
+
+                this.rid = SysUtil.generateRequestId();
+
+                //read-req-header
+                HeaderLines requestHeaders = new HeaderLines(HTTP.INIT_HEADER_LINES);
+                int bytesRead = clientIn.readHeaders(requestHeaders, HTTP.MAX_HEADER_LENGTH);
+
+                if (bytesRead == -1) {
+                    logger.warn("{}, No headers received from client"
+                            , rid
+                    );
+                    return;
+                }
+
+                // Parse HTTP request
+                HttpRequest httpRequest = requestHeaders.parseHttpRequest();
+
+                if (logger.isDebugEnabled()) {
+                    logger.debug("{}, {}, Request Headers\n{}"
+                            , rid
+                            , BodyStream.Flow.REQ
+                            , requestHeaders
+                    );
+                    logger.debug("{}, {}, Request: {} {} {} (Host: {}, Body: {}, Connection: {}, ContentLength: {})"
+                            , rid
+                            , BodyStream.Flow.REQ
+                            , httpRequest.getMethod()
+                            , httpRequest.getPath()
+                            , httpRequest.getVersion()
+                            , httpRequest.getHost()
+                            , httpRequest.getBodyStream()
+                            , httpRequest.getConnection()
+                            , httpRequest.getContentLength()
+                    );
+                }
+
+                //create socket - url matched
+                if (serverSocket == null) {
+                    serverSocket = createServerSocket(rid, httpRequest.getHost(), httpRequest.getPath());
+                    serverIn = new HttpStreamReader(serverSocket.getInputStream(), HTTP.BODY_BUFFER_SIZE);
+                    serverOut = new HttpStreamWriter(serverSocket.getOutputStream());
+                    child = VThreadExecutor.run(new PassResponseExecutor(this, serverIn, clientOut)
+                            , Thread.currentThread().getName() + "x"
+                    );
+                }
+
+                //write-req-header
+                serverOut.writeHeaders(requestHeaders);
+
+                // Relay request body to server if exists
+                if (httpRequest.getBodyStream() != BodyStream.NONE && httpRequest.getBodyStream() != BodyStream.NULL) {
+                    RelayBody.relayResponseBody(rid, BodyStream.Flow.REQ, httpRequest, clientIn, serverOut);
+                }
+
+                if (logger.isDebugEnabled()) {
+                    logger.debug("{}, {}, Wait - unpark"
+                            , rid
+                            , BodyStream.Flow.REQ
+                    );
+                }
+
+                LockSupport.unpark(this.child);
+                LockSupport.park();
+
+                if (logger.isDebugEnabled()) {
+                    logger.debug("{}, {}, stop={}"
+                            , rid
+                            , BodyStream.Flow.REQ
+                            , this.stop
+                    );
+                }
+
+                if (this.stop) {
+                    break;
+                }
             }
-            
-            // Parse HTTP request
-            HttpRequest httpRequest = requestHeaders.parseHttpRequest();
-            
-                       if( logger.isDebugEnabled() ) {
-                logger.debug("{}, {}, Request Headers\n{}"
-                        , rid
-                        , BodyStream.Flow.REQ
-                        , requestHeaders
-                );
-                logger.debug("{}, {}, Request: {} {} {} (Host: {}, Body: {}, Connection: {}, ContentLength: {})"
-                        , rid
-                        , BodyStream.Flow.REQ
-                        , httpRequest.getMethod()
-                        , httpRequest.getPath()
-                        , httpRequest.getVersion()
-                        , httpRequest.getHost()
-                        , httpRequest.getBodyStream()
-                        , httpRequest.getConnection()
-                        , httpRequest.getContentLength()
-                );
-            }
-
-            //create socket - url matched
-            serverSocket = createServerSocket(rid, httpRequest.getHost(), httpRequest.getPath());
-            serverIn = new HttpStreamReader(serverSocket.getInputStream(), HTTP.BODY_BUFFER_SIZE);
-            serverOut = new HttpStreamWriter(serverSocket.getOutputStream());
-
-            //write-req-header
-            serverOut.writeHeaders(requestHeaders);
-
-            // Relay request body to server if exists
-            if (httpRequest.getBodyStream() != BodyStream.NONE && httpRequest.getBodyStream() != BodyStream.NULL) {
-                RelayBody.relayResponseBody(rid, BodyStream.Flow.REQ, httpRequest, clientIn, serverOut);
-            }
-
-            //read-res-header
-            HeaderLines responseHeaders = new HeaderLines(HTTP.INIT_HEADER_LINES);
-
-            //read-res-header
-            bytesRead = serverIn.readHeaders(responseHeaders, HTTP.MAX_HEADER_LENGTH);
-
-            if (bytesRead == -1) {
-                logger.warn("{}, No headers received from server"
-                        , rid
-                );
-                return;
-            }
-
-            //parse-res-header
-            HttpResponse response = responseHeaders.parseHttpResponse();
-            if( logger.isDebugEnabled() ) {
-                logger.debug("{}, {}, Response Headers\n{}"
-                        , rid
-                        , BodyStream.Flow.RES
-                        , responseHeaders
-                );
-                logger.debug("{}, {}, Response: {} {} {} (Body: {}, Connection: {}, ContentLength: {})"
-                        , rid
-                        , BodyStream.Flow.RES
-                        , response.getVersion()
-                        , response.getStatusCode()
-                        , response.getStatusMessage()
-                        , response.getBodyStream()
-                        , response.getConnection()
-                        , response.getContentLength()
-                );
-            }
-
-            //write-res-header
-            clientOut.writeHeaders(responseHeaders);
-
-            // Relay response body to client
-            RelayBody.relayResponseBody(rid, BodyStream.Flow.RES, response, serverIn, clientOut);
-
         } catch (IOException e) {
             logger.error( rid + ", " + e.getMessage(), e);
         } finally {
+            this.stop = true;
+            if( this.child!=null) LockSupport.unpark(this.child);
             closeAll(rid);
         }
 

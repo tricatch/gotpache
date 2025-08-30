@@ -6,7 +6,7 @@ import org.slf4j.LoggerFactory;
 import tricatch.gotpache.cfg.Config;
 import tricatch.gotpache.cfg.attr.Http;
 import tricatch.gotpache.exception.ConfigException;
-import tricatch.gotpache.pass.PassExecutor;
+import tricatch.gotpache.pass.PassRequestExecutor;
 
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -53,7 +53,7 @@ public class HttpPassServer extends AbstractServer {
 
                 socket.setSoTimeout(http.getConnectTimeout());
 
-                VThreadExecutor.run(new PassExecutor(socket, this.virtualHosts, http.getConnectTimeout(), http.getReadTimeout()));
+                VThreadExecutor.run(new PassRequestExecutor(socket, this.virtualHosts, http.getConnectTimeout(), http.getReadTimeout()));
             }
 
         } catch (Exception e) {

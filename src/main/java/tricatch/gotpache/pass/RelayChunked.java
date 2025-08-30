@@ -68,7 +68,7 @@ public class RelayChunked {
             }
 
             if (logger.isDebugEnabled()) {
-                logger.debug("{}, {}, chunk size: {}"
+                logger.debug("{}, {}, Chunk size: {}"
                         , rid
                         , flow
                         , chunkSize
