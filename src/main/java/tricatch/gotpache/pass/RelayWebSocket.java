@@ -1,28 +1,54 @@
-package tricatch.gotpache.util;
+package tricatch.gotpache.pass;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import tricatch.gotpache.http.io.BodyStream;
+import tricatch.gotpache.http.io.HttpStreamReader;
+import tricatch.gotpache.http.io.HttpStreamWriter;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
 
-public class WebSocketUtil {
+/**
+ * Class for handling WebSocket HTTP body relay operations
+ */
+public class RelayWebSocket {
 
-    private static final Logger logger = LoggerFactory.getLogger(WebSocketUtil.class);
+    private static final Logger logger = LoggerFactory.getLogger(RelayWebSocket.class);
 
-    public static void relay(InputStream in, OutputStream out, String direction) throws IOException {
+    /**
+     * Relay WebSocket frames between HttpStreamReader and HttpStreamWriter
+     * @param rid Request ID for logging
+     * @param flow Body stream flow direction (REQ/RES)
+     * @param in Input stream reader
+     * @param out Output stream writer
+     * @throws IOException when I/O error occurs
+     */
+    public static void relay(String rid, BodyStream.Flow flow, HttpStreamReader in, HttpStreamWriter out) throws IOException {
+        if (logger.isDebugEnabled()) {
+            logger.debug("{}, {}, Relaying WebSocket frames"
+                    , rid
+                    , flow
+            );
+        }
+        
         while (true) {
             WebSocketFrame frame = readFrame(in);
             if (frame == null) break;
-            logFrame(direction + " READ", frame);
+            logFrame(rid, flow, "READ", frame);
             writeFrame(out, frame);
-            logFrame(direction + " WRITE", frame);
+            logFrame(rid, flow, "WRITE", frame);
             if (frame.getOpcode() == 0x8) break; // close frame
+        }
+        
+        if (logger.isDebugEnabled()) {
+            logger.debug("{}, {}, WebSocket relay completed"
+                    , rid
+                    , flow
+            );
         }
     }
 
-    public static WebSocketFrame readFrame(InputStream in) throws IOException {
+    public static WebSocketFrame readFrame(HttpStreamReader in) throws IOException {
         int b = in.read();
         if (b == -1) return null;
         int finAndOpcode = b;
@@ -69,7 +95,7 @@ public class WebSocketUtil {
         return new WebSocketFrame(finAndOpcode, maskAndPayloadLen, extendedPayloadLengthBytes, maskingKey, payload);
     }
 
-    public static void writeFrame(OutputStream out, WebSocketFrame frame) throws IOException {
+    public static void writeFrame(HttpStreamWriter out, WebSocketFrame frame) throws IOException {
         out.write(frame.getFinAndOpcode());
         out.write(frame.getMaskAndPayloadLen());
         if (frame.getExtendedPayloadLengthBytes() != null) {
@@ -82,14 +108,16 @@ public class WebSocketUtil {
         out.flush();
     }
 
-    private static void logFrame(String direction, WebSocketFrame frame) {
+    private static void logFrame(String rid, BodyStream.Flow flow, String direction, WebSocketFrame frame) {
         if (!logger.isDebugEnabled()) return;
 
         int opcode = frame.getOpcode();
         byte[] payload = frame.getPayload();
         int length = payload.length;
 
-        logger.debug("[WebSocket {}] Opcode: 0x{}, Payload Length: {}, Payload (hex): {}",
+        logger.debug("{}, {}, WebSocket {} - Opcode: 0x{}, Payload Length: {}, Payload (hex): {}",
+                rid,
+                flow,
                 direction,
                 Integer.toHexString(opcode),
                 length,
