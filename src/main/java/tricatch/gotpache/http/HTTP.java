@@ -18,16 +18,6 @@ public class HTTP {
         public static final byte[] KEEP_ALIVE = "Keep-Alive".getBytes();
     }
 
-    public enum STREAM {
-        NONE
-        , CONTENT_LENGTH
-        , CHUNKED
-        , WEBSOCKET
-        , UNTIL_CLOSE
-        , NULL
-    }
-
-
     public static final int PIPE_REQ_WAIT_SLEEP = 50;
     public static final int PIPE_REQ_WAIT_MAX = 10;
 

@@ -320,6 +320,8 @@ public class PassExecutor implements Runnable {
             }
             
             clientOut.write(buffer, 0, bytesRead);
+            clientOut.flush();
+
             remainingBytes -= bytesRead;
             
             if (logger.isDebugEnabled()) {
@@ -420,6 +422,7 @@ public class PassExecutor implements Runnable {
                 }
                 clientOut.write(chunkBodyBuffer, 0, bytesRead);
                 clientOut.flush();
+
                 remainingBytes -= bytesRead;
                 
                 if (logger.isDebugEnabled()) {
