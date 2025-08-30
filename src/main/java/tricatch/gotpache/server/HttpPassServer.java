@@ -31,6 +31,8 @@ public class HttpPassServer extends AbstractServer {
 
         try {
 
+            Thread.currentThread().setName("pt-http-pass");
+
             String clazzName = this.getClass().getSimpleName();
             Http http = this.config.getHttp();
 

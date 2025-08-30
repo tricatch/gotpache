@@ -35,6 +35,8 @@ public class ProxyPassConsole implements Runnable {
 
         try {
 
+            Thread.currentThread().setName("pt-console");
+
             String clazzName = this.getClass().getSimpleName();
             Console console = this.config.getConsole();
 

@@ -79,6 +79,8 @@ public class SSLPassServer extends AbstractServer {
 
         try {
 
+            Thread.currentThread().setName("pt-https-pass");
+
             String clazzName = this.getClass().getSimpleName();
             Https https = this.config.getHttps();
 
