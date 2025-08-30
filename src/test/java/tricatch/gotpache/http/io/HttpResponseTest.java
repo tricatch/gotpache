@@ -322,4 +322,61 @@ class HttpResponseTest {
         // Should use the first Content-Length header found
         assertEquals(Integer.valueOf(100), response.getContentLength());
     }
+    
+    @Test
+    @DisplayName("Parse WebSocket upgrade response")
+    void testParseWebSocketResponse() {
+        HeaderLines headers = new HeaderLines(5);
+        
+        // Add response line
+        headers.add(new ByteBuffer("HTTP/1.1 101 Switching Protocols".getBytes()));
+        
+        // Add headers
+        headers.add(new ByteBuffer("Server: nginx/1.18.0".getBytes()));
+        headers.add(new ByteBuffer("Upgrade: websocket".getBytes()));
+        headers.add(new ByteBuffer("Connection: Upgrade".getBytes()));
+        headers.add(new ByteBuffer("Sec-WebSocket-Accept: s3pPLMBiTxaQ9kYGzzhZRbK+xOo=".getBytes()));
+        
+        HttpResponse response = headers.parseHttpResponse();
+        
+        assertEquals("HTTP/1.1", response.getVersion());
+        assertEquals(101, response.getStatusCode());
+        assertEquals("Switching Protocols", response.getStatusMessage());
+        assertEquals("Upgrade", response.getConnection());
+        assertNull(response.getContentLength()); // WebSocket doesn't use Content-Length
+        assertEquals(HttpStream.WEBSOCKET, response.getBodyStream());
+        assertTrue(response.hasBody());
+        assertFalse(response.isSuccessful()); // 101 is not in 2xx range
+        assertFalse(response.isRedirection());
+        assertFalse(response.isClientError());
+        assertFalse(response.isServerError());
+        assertFalse(response.shouldCloseConnection()); // Connection: Upgrade
+    }
+    
+    @Test
+    @DisplayName("Parse 101 response without WebSocket headers")
+    void testParse101ResponseWithoutWebSocket() {
+        HeaderLines headers = new HeaderLines(2);
+        
+        // Add response line
+        headers.add(new ByteBuffer("HTTP/1.1 101 Switching Protocols".getBytes()));
+        
+        // Add headers (no WebSocket headers)
+        headers.add(new ByteBuffer("Server: nginx/1.18.0".getBytes()));
+        
+        HttpResponse response = headers.parseHttpResponse();
+        
+        assertEquals("HTTP/1.1", response.getVersion());
+        assertEquals(101, response.getStatusCode());
+        assertEquals("Switching Protocols", response.getStatusMessage());
+        assertNull(response.getConnection()); // No Connection header in this test
+        assertNull(response.getContentLength()); // No Content-Length header in this test
+        assertEquals(HttpStream.NONE, response.getBodyStream()); // Not WebSocket without proper headers
+        assertFalse(response.hasBody());
+        assertFalse(response.isSuccessful()); // 101 is not in 2xx range
+        assertFalse(response.isRedirection());
+        assertFalse(response.isClientError());
+        assertFalse(response.isServerError());
+        assertFalse(response.shouldCloseConnection()); // HTTP/1.1 without Connection header
+    }
 }

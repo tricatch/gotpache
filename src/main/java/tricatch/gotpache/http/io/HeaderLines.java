@@ -455,7 +455,7 @@ public class HeaderLines extends ArrayList<ByteBuffer> {
         Integer contentLength = getHeaderValueAsInt(HTTP.HEADER.CONTENT_LENGTH);
         
         // Determine body stream type
-        HttpStream httpStream = determineBodyStreamType();
+        HttpStream httpStream = determineRequestBodyStreamType();
         
         return new HttpRequest(method, path, version, host, connection, contentLength, httpStream, this);
     }
@@ -464,7 +464,17 @@ public class HeaderLines extends ArrayList<ByteBuffer> {
      * Determine body stream type based on headers
      * @return BodyStream type
      */
-    private HttpStream determineBodyStreamType() {
+    private HttpStream determineRequestBodyStreamType() {
+        // Check for WebSocket upgrade
+        if (hasHeader(HTTP.HEADER.UPGRADE) && hasHeader(HTTP.HEADER.CONNECTION)) {
+            String upgrade = getHeaderValueAsString(HTTP.HEADER.UPGRADE);
+            String connection = getHeaderValueAsString(HTTP.HEADER.CONNECTION);
+            if ("websocket".equalsIgnoreCase(upgrade) &&
+                connection != null && connection.toLowerCase().contains("upgrade")) {
+                return HttpStream.WEBSOCKET;
+            }
+        }
+        
         // Check for Transfer-Encoding: chunked
         if (hasHeader(HTTP.HEADER.TRANSFER_ENCODING)) {
             String transferEncoding = getHeaderValueAsString(HTTP.HEADER.TRANSFER_ENCODING);
@@ -585,6 +595,18 @@ public class HeaderLines extends ArrayList<ByteBuffer> {
         // Some status codes never have a body
         if (statusCode == 204 || statusCode == 304) {
             return HttpStream.NONE;
+        }
+        
+        // Check for WebSocket upgrade (101 Switching Protocols)
+        if (statusCode == 101) {
+            if (hasHeader(HTTP.HEADER.UPGRADE) && hasHeader(HTTP.HEADER.CONNECTION)) {
+                String upgrade = getHeaderValueAsString(HTTP.HEADER.UPGRADE);
+                String connection = getHeaderValueAsString(HTTP.HEADER.CONNECTION);
+                if ("websocket".equalsIgnoreCase(upgrade) &&
+                    connection != null && connection.toLowerCase().contains("upgrade")) {
+                    return HttpStream.WEBSOCKET;
+                }
+            }
         }
         
         // Check for Transfer-Encoding: chunked

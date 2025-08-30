@@ -98,11 +98,39 @@ class HttpRequestTest {
         assertEquals("HEAD", request.getMethod());
         assertEquals("/status", request.getPath());
         assertEquals("HTTP/1.0", request.getVersion());
+        
         assertEquals("example.com", request.getHost());
         assertNull(request.getConnection()); // No Connection header in this test
         assertNull(request.getContentLength()); // No Content-Length header in this test
         assertEquals(HttpStream.NONE, request.getBodyStream());
         assertFalse(request.hasBody());
+    }
+    
+    @Test
+    @DisplayName("Parse WebSocket upgrade request")
+    void testParseWebSocketRequest() {
+        HeaderLines headers = new HeaderLines(6);
+        
+        // Add request line
+        headers.add(new ByteBuffer("GET /websocket HTTP/1.1".getBytes()));
+        
+        // Add headers
+        headers.add(new ByteBuffer("Host: example.com".getBytes()));
+        headers.add(new ByteBuffer("Upgrade: websocket".getBytes()));
+        headers.add(new ByteBuffer("Connection: Upgrade".getBytes()));
+        headers.add(new ByteBuffer("Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==".getBytes()));
+        headers.add(new ByteBuffer("Sec-WebSocket-Version: 13".getBytes()));
+        
+        HttpRequest request = headers.parseHttpRequest();
+        
+        assertEquals("GET", request.getMethod());
+        assertEquals("/websocket", request.getPath());
+        assertEquals("HTTP/1.1", request.getVersion());
+        assertEquals("example.com", request.getHost());
+        assertEquals("Upgrade", request.getConnection());
+        assertNull(request.getContentLength()); // WebSocket doesn't use Content-Length
+        assertEquals(HttpStream.WEBSOCKET, request.getBodyStream());
+        assertTrue(request.hasBody());
     }
     
     @Test

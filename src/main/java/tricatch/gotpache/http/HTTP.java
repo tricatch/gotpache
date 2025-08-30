@@ -15,6 +15,7 @@ public class HTTP {
         public static final byte[] CONTENT_LENGTH = "Content-Length".getBytes();
         public static final byte[] TRANSFER_ENCODING = "Transfer-Encoding".getBytes();
         public static final byte[] CONNECTION = "Connection".getBytes();
+        public static final byte[] UPGRADE = "Upgrade".getBytes();
     }
 
 }
