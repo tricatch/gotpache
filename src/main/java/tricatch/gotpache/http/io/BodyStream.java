@@ -34,4 +34,11 @@ public enum BodyStream {
      * Body stream until connection close
      */
     UNTIL_CLOSE
+
+    ;
+
+    public static enum Flow {
+        REQ,
+        RES
+    }
 }
