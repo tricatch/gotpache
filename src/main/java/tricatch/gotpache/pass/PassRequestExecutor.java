@@ -157,7 +157,8 @@ public class PassRequestExecutor implements Runnable {
                 }
             }
         } catch (IOException e) {
-            logger.error( rid + ", " + e.getMessage(), e);
+            String errorRid = rid != null ? rid : "unknown";
+            logger.error( errorRid + ", " + e.getMessage(), e);
         } finally {
             this.stop = true;
             if( this.child!=null) LockSupport.unpark(this.child);
@@ -173,13 +174,13 @@ public class PassRequestExecutor implements Runnable {
             logger.debug( "{}, Close", rid );
         }
 
-        if( clientIn !=null ) try{  clientIn.close(); }catch (Exception e){}
-        if( clientOut !=null ) try{ clientOut.close(); }catch(Exception e){}
-        if( clientSocket !=null ) try{ clientSocket.close(); }catch(Exception e){}
+        if( clientIn !=null ) try{  clientIn.close(); }catch (Exception e){ logger.debug("Error closing clientIn: {}", e.getMessage()); }
+        if( clientOut !=null ) try{ clientOut.close(); }catch(Exception e){ logger.debug("Error closing clientOut: {}", e.getMessage()); }
+        if( clientSocket !=null ) try{ clientSocket.close(); }catch(Exception e){ logger.debug("Error closing clientSocket: {}", e.getMessage()); }
 
-        if( serverIn !=null ) try{ serverIn.close(); }catch(Exception e){}
-        if( serverOut !=null ) try{ serverOut.close(); }catch(Exception e){}
-        if( serverSocket !=null ) try{ serverSocket.close(); }catch(Exception e){}
+        if( serverIn !=null ) try{ serverIn.close(); }catch(Exception e){ logger.debug("Error closing serverIn: {}", e.getMessage()); }
+        if( serverOut !=null ) try{ serverOut.close(); }catch(Exception e){ logger.debug("Error closing serverOut: {}", e.getMessage()); }
+        if( serverSocket !=null ) try{ serverSocket.close(); }catch(Exception e){ logger.debug("Error closing serverSocket: {}", e.getMessage()); }
 
         clientIn = null;
         clientOut = null;

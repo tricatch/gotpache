@@ -91,7 +91,8 @@ public class PassResponseExecutor implements Runnable {
             }
 
         } catch (IOException e) {
-            logger.error( rid + ", " + e.getMessage(), e);
+            String errorRid = rid != null ? rid : "unknown";
+            logger.error( errorRid + ", " + e.getMessage(), e);
         } finally {
             passRequestExecutor.setStop(true);
             LockSupport.unpark(this.passRequestExecutor.getThread());
