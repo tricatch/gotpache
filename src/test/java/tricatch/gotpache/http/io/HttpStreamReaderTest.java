@@ -3,6 +3,8 @@ package tricatch.gotpache.http.io;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.DisplayName;
+import tricatch.gotpache.http.HTTP;
+
 import static org.junit.jupiter.api.Assertions.*;
 
 import java.io.ByteArrayInputStream;
@@ -18,7 +20,7 @@ class HttpStreamReaderTest {
     void setUp() {
         testData = "Hello World\r\nThis is a test\r\nAnother line\r\nLast line".getBytes();
         ByteArrayInputStream inputStream = new ByteArrayInputStream(testData);
-        httpStream = new HttpStreamReader(inputStream);
+        httpStream = new HttpStreamReader(inputStream, HTTP.BODY_BUFFER_SIZE);
     }
 
     @Test
@@ -30,38 +32,36 @@ class HttpStreamReaderTest {
     @Test
     @DisplayName("Basic readLine Test")
     void testReadLine() throws IOException {
-        byte[] buffer = new byte[100];
-        int bytesRead = httpStream.readLine(buffer, 100);
+
+        ByteBuffer buffer = new ByteBuffer(1024);
+        int bytesRead = httpStream.readLine(buffer, 1024);
         
         assertTrue(bytesRead > 0);
         assertTrue(bytesRead <= 100);
-        
-        String line = new String(buffer, 0, bytesRead);
-        assertEquals("Hello World", line);
+
+        assertEquals("Hello World", buffer.toString());
     }
 
     @Test
     @DisplayName("Multiple Lines Reading Test")
     void testReadMultipleLines() throws IOException {
-        byte[] buffer = new byte[100];
-        
         // First line
-        int bytesRead1 = httpStream.readLine(buffer, 100);
+        ByteBuffer buffer1 = new ByteBuffer(1024);
+        int bytesRead1 = httpStream.readLine(buffer1, 1024);
         assertTrue(bytesRead1 > 0);
-        String line1 = new String(buffer, 0, bytesRead1);
-        assertEquals("Hello World", line1);
+        assertEquals("Hello World", buffer1.toString());
         
         // Second line
-        int bytesRead2 = httpStream.readLine(buffer, 100);
+        ByteBuffer buffer2 = new ByteBuffer(100);
+        int bytesRead2 = httpStream.readLine(buffer2, 100);
         assertTrue(bytesRead2 > 0);
-        String line2 = new String(buffer, 0, bytesRead2);
-        assertEquals("This is a test", line2);
+        assertEquals("This is a test", buffer2.toString());
         
         // Third line
-        int bytesRead3 = httpStream.readLine(buffer, 100);
+        ByteBuffer buffer3 = new ByteBuffer(100);
+        int bytesRead3 = httpStream.readLine(buffer3, 100);
         assertTrue(bytesRead3 > 0);
-        String line3 = new String(buffer, 0, bytesRead3);
-        assertEquals("Another line", line3);
+        assertEquals("Another line", buffer3.toString());
     }
 
     @Test
@@ -69,14 +69,13 @@ class HttpStreamReaderTest {
     void testReadLineWithLFOnly() throws IOException {
         byte[] dataWithLF = "Hello World\nThis is a test\n".getBytes();
         ByteArrayInputStream inputStream = new ByteArrayInputStream(dataWithLF);
-        HttpStreamReader stream = new HttpStreamReader(inputStream);
+        HttpStreamReader stream = new HttpStreamReader(inputStream, HTTP.BODY_BUFFER_SIZE);
         
-        byte[] buffer = new byte[100];
-        int bytesRead = stream.readLine(buffer, 100);
+        ByteBuffer buffer = new ByteBuffer(1024);
+        int bytesRead = stream.readLine(buffer, 1024);
         
         assertTrue(bytesRead > 0);
-        String line = new String(buffer, 0, bytesRead);
-        assertEquals("Hello World", line);
+        assertEquals("Hello World", buffer.toString());
     }
 
     @Test
@@ -84,14 +83,13 @@ class HttpStreamReaderTest {
     void testReadLineWithCROnly() throws IOException {
         byte[] dataWithCR = "Hello\rWorld\r\nTest".getBytes();
         ByteArrayInputStream inputStream = new ByteArrayInputStream(dataWithCR);
-        HttpStreamReader stream = new HttpStreamReader(inputStream);
+        HttpStreamReader stream = new HttpStreamReader(inputStream, HTTP.BODY_BUFFER_SIZE);
         
-        byte[] buffer = new byte[100];
+        ByteBuffer buffer = new ByteBuffer(100);
         int bytesRead = stream.readLine(buffer, 100);
         
         assertTrue(bytesRead > 0);
-        String line = new String(buffer, 0, bytesRead);
-        assertEquals("Hello\rWorld", line);
+        assertEquals("Hello\rWorld", buffer.toString());
     }
 
     @Test
@@ -100,14 +98,13 @@ class HttpStreamReaderTest {
         // Use shorter data that fits within the limit
         byte[] shortData = "Hi\r\nTest".getBytes();
         ByteArrayInputStream inputStream = new ByteArrayInputStream(shortData);
-        HttpStreamReader stream = new HttpStreamReader(inputStream);
+        HttpStreamReader stream = new HttpStreamReader(inputStream, HTTP.BODY_BUFFER_SIZE);
         
-        byte[] buffer = new byte[10];
+        ByteBuffer buffer = new ByteBuffer(5);
         int bytesRead = stream.readLine(buffer, 5);
         
         assertEquals(2, bytesRead);
-        String line = new String(buffer, 0, bytesRead);
-        assertEquals("Hi", line);
+        assertEquals("Hi", buffer.toString());
     }
 
     @Test
@@ -120,9 +117,9 @@ class HttpStreamReaderTest {
         }
         
         ByteArrayInputStream inputStream = new ByteArrayInputStream(longData.toString().getBytes());
-        HttpStreamReader stream = new HttpStreamReader(inputStream);
+        HttpStreamReader stream = new HttpStreamReader(inputStream, HTTP.BODY_BUFFER_SIZE);
         
-        byte[] buffer = new byte[1000];
+        ByteBuffer buffer = new ByteBuffer(50);
         assertThrows(IOException.class, () -> {
             stream.readLine(buffer, 50); // Limit to maximum 50 bytes
         });
@@ -132,9 +129,9 @@ class HttpStreamReaderTest {
     @DisplayName("Reading from Empty Stream Test")
     void testReadLineFromEmptyStream() throws IOException {
         ByteArrayInputStream emptyStream = new ByteArrayInputStream(new byte[0]);
-        HttpStreamReader emptyHttpStream = new HttpStreamReader(emptyStream);
+        HttpStreamReader emptyHttpStream = new HttpStreamReader(emptyStream, HTTP.BODY_BUFFER_SIZE);
         
-        byte[] buffer = new byte[100];
+        ByteBuffer buffer = new ByteBuffer(100);
         int bytesRead = emptyHttpStream.readLine(buffer, 100);
         
         assertEquals(-1, bytesRead);
@@ -145,22 +142,19 @@ class HttpStreamReaderTest {
     void testReadLineWithoutLineEnding() throws IOException {
         byte[] dataWithoutEnding = "Hello World".getBytes();
         ByteArrayInputStream inputStream = new ByteArrayInputStream(dataWithoutEnding);
-        HttpStreamReader stream = new HttpStreamReader(inputStream);
+        HttpStreamReader stream = new HttpStreamReader(inputStream, HTTP.BODY_BUFFER_SIZE);
         
-        byte[] buffer = new byte[100];
+        ByteBuffer buffer = new ByteBuffer(100);
         int bytesRead = stream.readLine(buffer, 100);
         
         assertTrue(bytesRead > 0);
-        String line = new String(buffer, 0, bytesRead);
-        assertEquals("Hello World", line);
+        assertEquals("Hello World", buffer.toString());
     }
-
-
 
     @Test
     @DisplayName("Negative Maximum Length Exception Test")
     void testReadLineWithNegativeMax() {
-        byte[] buffer = new byte[100];
+        ByteBuffer buffer = new ByteBuffer(100);
         assertThrows(IllegalArgumentException.class, () -> {
             httpStream.readLine(buffer, -1);
         });
@@ -169,13 +163,11 @@ class HttpStreamReaderTest {
     @Test
     @DisplayName("Buffer Size Exceeded Exception Test")
     void testReadLineWithExceedingBufferSize() {
-        byte[] buffer = new byte[10];
+        ByteBuffer buffer = new ByteBuffer(20);
         assertThrows(IllegalArgumentException.class, () -> {
-            httpStream.readLine(buffer, 20);
+            httpStream.readLine(buffer, 10);
         });
     }
-
-
 
     @Test
     @DisplayName("Large Data Handling Test")
@@ -186,10 +178,10 @@ class HttpStreamReaderTest {
         }
         
         ByteArrayInputStream inputStream = new ByteArrayInputStream(largeData.toString().getBytes());
-        HttpStreamReader stream = new HttpStreamReader(inputStream);
+        HttpStreamReader stream = new HttpStreamReader(inputStream, HTTP.BODY_BUFFER_SIZE);
         
         int linesRead = 0;
-        byte[] buffer = new byte[100];
+        ByteBuffer buffer = new ByteBuffer(100);
         
         while (stream.readLine(buffer, 100) > 0) {
             linesRead++;
@@ -204,22 +196,23 @@ class HttpStreamReaderTest {
     void testLastLineHandling() throws IOException {
         byte[] dataWithLastLine = "First line\r\nSecond line\r\nLast line".getBytes();
         ByteArrayInputStream inputStream = new ByteArrayInputStream(dataWithLastLine);
-        HttpStreamReader stream = new HttpStreamReader(inputStream);
-        
-        byte[] buffer = new byte[100];
+        HttpStreamReader stream = new HttpStreamReader(inputStream, HTTP.BODY_BUFFER_SIZE);
         
         // Read first two lines
-        stream.readLine(buffer, 100);
-        stream.readLine(buffer, 100);
+        ByteBuffer buffer1 = new ByteBuffer(100);
+        stream.readLine(buffer1, 100);
+        ByteBuffer buffer2 = new ByteBuffer(100);
+        stream.readLine(buffer2, 100);
         
         // Read last line (no line ending)
-        int bytesRead = stream.readLine(buffer, 100);
+        ByteBuffer buffer3 = new ByteBuffer(100);
+        int bytesRead = stream.readLine(buffer3, 100);
         assertTrue(bytesRead > 0);
-        String lastLine = new String(buffer, 0, bytesRead);
-        assertEquals("Last line", lastLine);
+        assertEquals("Last line", buffer3.toString());
         
         // Try to read more - should return -1
-        int nextRead = stream.readLine(buffer, 100);
+        ByteBuffer buffer4 = new ByteBuffer(100);
+        int nextRead = stream.readLine(buffer4, 100);
         assertEquals(-1, nextRead);
     }
 
@@ -233,16 +226,16 @@ class HttpStreamReaderTest {
         }
         
         ByteArrayInputStream inputStream = new ByteArrayInputStream(longLine.toString().getBytes());
-        HttpStreamReader stream = new HttpStreamReader(inputStream);
+        HttpStreamReader stream = new HttpStreamReader(inputStream, HTTP.BODY_BUFFER_SIZE);
         
         // Start with small buffer
-        byte[] buffer = new byte[1000];
+        ByteBuffer buffer = new ByteBuffer(1000);
         int bytesRead = stream.readLine(buffer, 1000);
         
         assertTrue(bytesRead > 10); // Buffer should be expanded
         assertEquals(200, bytesRead); // Should read all data
         
-        String result = new String(buffer, 0, bytesRead);
+        String result = buffer.toString();
         assertEquals(longLine.toString(), result);
     }
 
@@ -256,10 +249,10 @@ class HttpStreamReaderTest {
         }
         
         ByteArrayInputStream inputStream = new ByteArrayInputStream(veryLongLine.toString().getBytes());
-        HttpStreamReader stream = new HttpStreamReader(inputStream);
+        HttpStreamReader stream = new HttpStreamReader(inputStream, HTTP.BODY_BUFFER_SIZE);
         
         // Start with small buffer but limit maximum size
-        byte[] buffer = new byte[1000];
+        ByteBuffer buffer = new ByteBuffer(1000);
         int maxSize = 1000;
         
         // Should throw exception when maximum size is reached
@@ -279,16 +272,16 @@ class HttpStreamReaderTest {
         longLine.append("\r\nNext line");
         
         ByteArrayInputStream inputStream = new ByteArrayInputStream(longLine.toString().getBytes());
-        HttpStreamReader stream = new HttpStreamReader(inputStream);
+        HttpStreamReader stream = new HttpStreamReader(inputStream, HTTP.BODY_BUFFER_SIZE);
         
         // Start with small buffer
-        byte[] buffer = new byte[1000];
+        ByteBuffer buffer = new ByteBuffer(1000);
         int bytesRead = stream.readLine(buffer, 1000);
         
         assertTrue(bytesRead > 10); // Buffer should be expanded
         assertEquals(200, bytesRead); // Should read only up to line terminator
         
-        String result = new String(buffer, 0, bytesRead);
+        String result = buffer.toString();
         assertEquals(longLine.substring(0, 200), result);
     }
 }

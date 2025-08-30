@@ -1,5 +1,8 @@
 package tricatch.gotpache.http.io;
 
+import tricatch.gotpache.exception.MaxBufferExceedException;
+import tricatch.gotpache.http.HTTP;
+
 import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -8,14 +11,6 @@ import java.io.InputStream;
  * BufferedInputStream extension that provides line reading functionality
  */
 public class HttpStreamReader extends BufferedInputStream {
-
-    /**
-     * Creates HttpStreamReader with default buffer size
-     * @param in input stream
-     */
-    public HttpStreamReader(InputStream in) {
-        super(in);
-    }
 
     /**
      * Creates HttpStreamReader with specified buffer size
@@ -36,30 +31,32 @@ public class HttpStreamReader extends BufferedInputStream {
      * @return actual number of bytes read, or -1 if end of stream is reached
      * @throws IOException when I/O error occurs
      */
-    public int readLine(byte[] buffer, int max) throws IOException {
+    public int readLine(ByteBuffer buffer, int max) throws IOException {
         if (buffer == null) {
             throw new NullPointerException("Buffer cannot be null");
         }
         if (max < 0) {
             throw new IllegalArgumentException("Max length cannot be negative");
         }
-        if (max > buffer.length) {
-            throw new IllegalArgumentException("Max length cannot exceed buffer length");
+        if (buffer.getBuffer().length > max) {
+            throw new IllegalArgumentException("Buffer length cannot exceed max (" + buffer.getBuffer().length + ", " + max + ")" );
         }
 
         int bytesRead = 0;
         int ch;
         boolean foundCR = false;
-        byte[] currentBuffer = buffer;
-        int currentMax = max;
 
-        while (bytesRead < currentMax) {
+        while (bytesRead < max) {
             ch = read();
             
-            if (ch == -1) {
-                // End of stream reached
-                return bytesRead > 0 ? bytesRead : -1;
+                    if (ch == -1) {
+            // End of stream reached
+            if (bytesRead > 0) {
+                buffer.setLength(bytesRead);
+                return bytesRead;
             }
+            return -1;
+        }
 
             if (ch == '\r') {
                 foundCR = true;
@@ -68,57 +65,30 @@ public class HttpStreamReader extends BufferedInputStream {
 
             if (ch == '\n') {
                 // Found CRLF or LF, so end of line
+                buffer.setLength(bytesRead);
                 return bytesRead;
             }
 
             if (foundCR) {
                 // CR followed by non-LF character, add CR to buffer
-                if (bytesRead >= currentBuffer.length) {
+                if (bytesRead >= buffer.getBuffer().length) {
                     // Buffer is full, expand it
-                    currentBuffer = expandBuffer(currentBuffer, currentMax);
+                    expandBuffer(buffer, max);
                 }
-                currentBuffer[bytesRead++] = (byte) '\r';
+                buffer.getBuffer()[bytesRead++] = (byte) '\r';
                 foundCR = false;
             }
 
-            if (bytesRead >= currentBuffer.length) {
+            if (bytesRead >= buffer.getBuffer().length) {
                 // Buffer is full, expand it
-                currentBuffer = expandBuffer(currentBuffer, currentMax);
+                expandBuffer(buffer, max);
             }
-            currentBuffer[bytesRead++] = (byte) ch;
+            buffer.getBuffer()[bytesRead++] = (byte) ch;
         }
 
         // Reached maximum length without finding line terminator
+        buffer.setLength(bytesRead);
         throw new IOException("Maximum line length (" + max + ") exceeded without finding line terminator");
-    }
-    
-    /**
-     * Reads a line and stores it in the provided ByteBuffer
-     * Recognizes CRLF(\r\n) or LF(\n) as line terminators
-     * Expands buffer by 2x when line terminator is not found, but does not exceed max
-     * 
-     * @param buffer ByteBuffer to store the line
-     * @param max maximum number of bytes to read
-     * @return actual number of bytes read, or -1 if end of stream is reached
-     * @throws IOException when I/O error occurs
-     */
-    public int readLine(ByteBuffer buffer, int max) throws IOException {
-        if (buffer == null) {
-            throw new NullPointerException("Buffer cannot be null");
-        }
-        if (max < 0) {
-            throw new IllegalArgumentException("Max length cannot be negative");
-        }
-        if (max > buffer.getBuffer().length) {
-            throw new IllegalArgumentException("Max length cannot exceed buffer length");
-        }
-
-        int bytesRead = readLine(buffer.getBuffer(), max);
-        if (bytesRead > 0) {
-            // Update the ByteBuffer's length to reflect actual bytes read
-            buffer.setLength(bytesRead);
-        }
-        return bytesRead;
     }
     
     /**
@@ -143,7 +113,7 @@ public class HttpStreamReader extends BufferedInputStream {
         
         
         while (true) {
-            ByteBuffer lineBuffer = new ByteBuffer(new byte[maxLineLength]);
+            ByteBuffer lineBuffer = new ByteBuffer(HTTP.INIT_HEADER_LENGTH);
             int bytesRead = readLine(lineBuffer, maxLineLength);
             
             if (bytesRead == -1) {
@@ -174,16 +144,18 @@ public class HttpStreamReader extends BufferedInputStream {
      * @param max maximum allowed size
      * @return expanded buffer
      */
-    private byte[] expandBuffer(byte[] oldBuffer, int max) {
-        int newSize = Math.min(oldBuffer.length * 2, max);
-        if (newSize <= oldBuffer.length) {
+    private void expandBuffer(ByteBuffer oldBuffer, int max) throws MaxBufferExceedException {
+        int newSize = Math.min(oldBuffer.getBuffer().length * 2, max);
+        if (newSize <= oldBuffer.getBuffer().length) {
             // Cannot expand further
-            return oldBuffer;
+            throw new MaxBufferExceedException("expand buffer error - max=" + max);
         }
         
         byte[] newBuffer = new byte[newSize];
-        System.arraycopy(oldBuffer, 0, newBuffer, 0, oldBuffer.length);
-        return newBuffer;
+
+        System.arraycopy(oldBuffer.getBuffer(), 0, newBuffer, 0, oldBuffer.getBuffer().length);
+
+        oldBuffer.setBuffer(newBuffer);
     }
 
 

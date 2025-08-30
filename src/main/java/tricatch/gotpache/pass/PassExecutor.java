@@ -14,20 +14,19 @@ import tricatch.gotpache.http.io.HttpStreamReader;
 import tricatch.gotpache.http.io.HttpStreamWriter;
 import tricatch.gotpache.server.VirtualHosts;
 import tricatch.gotpache.server.VirtualPath;
-import tricatch.gotpache.util.ByteUtils;
 import tricatch.gotpache.util.SocketUtils;
+import tricatch.gotpache.util.SysUtil;
 
 import java.io.IOException;
-import java.io.OutputStream;
 import java.net.Socket;
 import java.net.URL;
 import java.util.List;
 
 public class PassExecutor implements Runnable {
 
-    private static Logger logger = LoggerFactory.getLogger(PassExecutor.class);
+    private static final Logger logger = LoggerFactory.getLogger(PassExecutor.class);
 
-    private Socket clientSocket = null;
+    private Socket clientSocket;
     private HttpStreamReader clientIn = null;
     private HttpStreamWriter clientOut = null;
 
@@ -35,9 +34,9 @@ public class PassExecutor implements Runnable {
     private HttpStreamReader serverIn = null;
     private HttpStreamWriter serverOut = null;
 
-    private VirtualHosts virtualHosts;
-    private int connectTimeout = 0;
-    private int readTimeout = 0;
+    private final VirtualHosts virtualHosts;
+    private final int connectTimeout;
+    private final int readTimeout;
 
     private VirtualPath virtualPath = null;
 
@@ -52,13 +51,11 @@ public class PassExecutor implements Runnable {
     @Override
     public void run() {
 
+        String rid = SysUtil.generateRequestId();
+
         try {
 
-            if (logger.isTraceEnabled()){
-                logger.trace("read from socket - h{}", clientSocket.hashCode());
-            }
-
-            clientIn = new HttpStreamReader(clientSocket.getInputStream());
+            clientIn = new HttpStreamReader(clientSocket.getInputStream(), HTTP.BODY_BUFFER_SIZE);
             clientOut = new HttpStreamWriter(clientSocket.getOutputStream());
 
             //read-req-header
@@ -66,29 +63,38 @@ public class PassExecutor implements Runnable {
             int bytesRead = clientIn.readHeaders(requestHeaders, HTTP.MAX_HEADER_LENGTH);
             
             if (bytesRead == -1) {
-                logger.warn("No headers received from client");
+                logger.warn("{}, No headers received from client"
+                        , rid
+                );
                 return;
             }
             
             // Parse HTTP request
             HttpRequest httpRequest = requestHeaders.parseHttpRequest();
-            logger.debug("Parsed request: {}", httpRequest);
             
-            // Log request details
-            logger.info("Request: {} {} {} (Host: {}, Connection: {}, ContentLength: {}, Body: {})", 
-                       httpRequest.getMethod(), 
-                       httpRequest.getPath(), 
-                       httpRequest.getVersion(),
-                       httpRequest.getHost(),
-                       httpRequest.getConnection(),
-                       httpRequest.getContentLength(),
-                       httpRequest.getBodyStream());
+           if( logger.isDebugEnabled() ) {
+               logger.debug("{}, Request Headers\n{}"
+                       , rid
+                       , requestHeaders
+               );
+               logger.debug("{}, Request: {} {} {} (Host: {}, Body: {}, Connection: {}, ContentLength: {})"
+                       , rid
+                       , httpRequest.getMethod()
+                       , httpRequest.getPath()
+                       , httpRequest.getVersion()
+                       , httpRequest.getHost()
+                       , httpRequest.getBodyStream()
+                       , httpRequest.getConnection()
+                       , httpRequest.getContentLength()
+               );
+           }
 
             //create socket - url matched
-            serverSocket = createServerSocket(httpRequest.getHost(), httpRequest.getPath());
-            serverIn = new HttpStreamReader(serverSocket.getInputStream());
+            serverSocket = createServerSocket(rid, httpRequest.getHost(), httpRequest.getPath());
+            serverIn = new HttpStreamReader(serverSocket.getInputStream(), HTTP.BODY_BUFFER_SIZE);
             serverOut = new HttpStreamWriter(serverSocket.getOutputStream());
 
+            //write-req-header
             serverOut.writeHeaders(requestHeaders);
 
             //read-res-header
@@ -98,79 +104,50 @@ public class PassExecutor implements Runnable {
             bytesRead = serverIn.readHeaders(responseHeaders, HTTP.MAX_HEADER_LENGTH);
 
             if (bytesRead == -1) {
-                logger.warn("No headers received from server");
+                logger.warn("{}, No headers received from server"
+                        , rid
+                );
                 return;
             }
 
             //parse-res-header
             HttpResponse response = responseHeaders.parseHttpResponse();
-            logger.debug("Parsed response: {}", response);
+            if( logger.isDebugEnabled() ) {
+                logger.debug("{}, Response Headers\n{}"
+                        , rid
+                        , responseHeaders
+                );
+                logger.debug("{}, Response: {} {} {} (Body: {}, Connection: {}, ContentLength: {})"
+                        , rid
+                        , response.getVersion()
+                        , response.getStatusCode()
+                        , response.getStatusMessage()
+                        , response.getBodyStream()
+                        , response.getConnection()
+                        , response.getContentLength()
+                );
+            }
 
             //write-res-header
             clientOut.writeHeaders(responseHeaders);
 
             // Relay response body to client
-            relayResponseBody(response);
-
-            // //write-req-header
-            // serverOut.writeHeader(requestHeader);
-
-            // //read-res-header
-            // ResponseHeader responseHeader = serverIn.readHeader();
-            // BodyStream bodyStream = serverIn.getBodyStream(responseHeader);
-
-            // //write-res-header
-            // clientOut.writeHeader(responseHeader);
-
-            // logger.debug( "buffer - index ( {} - {} ), full-raw\n{}"
-            //         , serverIn.getBufferPos()
-            //         , serverIn.getBufferEnd()
-            //         , ByteUtils.toHexPretty(serverIn.getBuffer(), 0,  serverIn.getBufferEnd())
-            //         );
-
-
-            // for(int i1=0;;i1++) {
-            //     //read-chunk-size
-            //     ChunkSize chunkSize = serverIn.readChunkSize();
-
-            //     //write-chunk-size
-            //     clientOut.writeChunkSize(chunkSize);
-
-            //     if( chunkSize.size == 0 ){
-            //         ChunkEnd chunkEnd = serverIn.readChunkEnd();
-            //         clientOut.writeChunkEnd(chunkEnd);
-            //         break;
-            //     }
-
-            //     for (int i2=0;;i2++) {
-
-            //         logger.trace("----- {}/{} -----", i1, i2);
-
-            //         //read-chunk-stream
-            //         ChunkStream chunkStream = serverIn.readChunkStream(chunkSize);
-
-            //         //write-chunk-stream
-            //         clientOut.writeChunkStream(chunkStream);
-
-            //         if( chunkStream.last ) break;
-            //     }
-            // }
-
-
-            logger.debug("END");
+            relayResponseBody(rid, response);
 
         } catch (IOException e) {
-            logger.error( e.getMessage(), e);
+            logger.error( rid + ", " + e.getMessage(), e);
         } finally {
-            closeAll();
+            closeAll(rid);
         }
 
 
     }
 
-    private void closeAll(){
+    private void closeAll(String rid){
 
-        if( logger.isTraceEnabled() ) logger.trace( "close" );
+        if( logger.isDebugEnabled() ){
+            logger.debug( "{}, Close", rid );
+        }
 
         if( clientIn !=null ) try{  clientIn.close(); }catch (Exception e){}
         if( clientOut !=null ) try{ clientOut.close(); }catch(Exception e){}
@@ -189,146 +166,118 @@ public class PassExecutor implements Runnable {
         serverSocket = null;
     }
 
-    private Socket createServerSocket(String vhost, String uri) throws IOException {
+    private Socket createServerSocket(String rid, String vhost, String uri) throws IOException {
 
-        if( logger.isDebugEnabled() ) logger.debug( "req, vhost={}, uri={}", vhost, uri);
+        if( logger.isDebugEnabled() ){
+            logger.debug( "{}, Create Socket, vhost={}, uri={}"
+                    , rid
+                    , vhost
+                    , uri
+            );
+        }
 
         List<VirtualPath> urls = this.virtualHosts.get(vhost);
 
-        if( urls==null || urls.size()==0 ) throw new IOException( "undefined vhost - " + vhost );
+        if( urls==null || urls.isEmpty()) throw new IOException( "Undefined vhost - " + vhost );
 
-        for (int i = 0; i < urls.size(); i++) {
-            VirtualPath vu = urls.get(i);
+        for (VirtualPath vu : urls) {
             AntPathMatcher pathMatcher = new AntPathMatcher.Builder().build();
-            boolean matched = pathMatcher.isMatch( vu.getPath(), uri );
+            boolean matched = pathMatcher.isMatch(vu.getPath(), uri);
 
-            if( logger.isDebugEnabled() ) logger.debug( "url matched - {}, {}, {}", matched, vu.getPath(), uri );
-
-            if( matched ){
+            if (matched) {
                 virtualPath = vu;
-                if( logger.isDebugEnabled()){
-                    logger.debug( "url matched - {}{}, {}{}", vhost, vu.getPath(), vu.getTarget(), uri );
+                if (logger.isDebugEnabled()) {
+                    logger.debug("{}, Reserved path - {}, {}, {}, {}"
+                            , rid
+                            , vhost
+                            , vu.getPath()
+                            , vu.getTarget()
+                            , uri
+                    );
                 }
                 break;
             }
         }
 
-        if( virtualPath == null ) throw new IOException( "Not found pattern - " + uri + " -- " + vhost );
+        if( virtualPath == null ) throw new IOException( "Not found path - " + uri + " -- " + vhost );
 
         URL target = virtualPath.getTarget();
 
         if( "https".equals(target.getProtocol()) ){
+            int port = target.getPort() <= 0 ? 443 : target.getPort();
+            if( logger.isDebugEnabled() ){
+                logger.debug("{}, Create HTTPS {}:{} / {}"
+                        , rid
+                        , target.getHost()
+                        , port
+                        , vhost
+                );
+            }
             return SocketUtils.createHttps(vhost, target.getHost(), target.getPort(), this.connectTimeout, this.readTimeout);
         } else {
+            int port = target.getPort() <= 0 ? 80 : target.getPort();
+            if( logger.isDebugEnabled() ) logger.debug("{}, Create HTTP {}:{} / {}"
+                    , rid
+                    , target.getHost()
+                    , port
+                    , vhost
+            );
             return SocketUtils.createHttp(target.getHost(), target.getPort(), this.connectTimeout, this.readTimeout);
         }
     }
-
-//    /**
-//     * WebSocket 핸드셰이크를 처리합니다.
-//     */
-//    private void handleWebSocketHandshake() throws IOException {
-//        if( logger.isDebugEnabled() ) logger.debug( "WebSocket handshake processing" );
-//
-//        // WebSocket 핸드셰이크 응답이 제대로 전달되었는지 확인
-//        // 서버 응답에서 WebSocket 업그레이드 응답을 클라이언트로 전달
-//        // 이미 pipeResponseHeader()에서 처리되었으므로 추가 작업 불필요
-//
-//        // WebSocket 연결이 성공적으로 설정되었는지 확인
-//        if (logger.isDebugEnabled()) {
-//            logger.debug("WebSocket handshake completed successfully");
-//        }
-//    }
-//
-//    /**
-//     * WebSocket 프레임을 처리합니다.
-//     */
-//    private void handleWebSocketFrames() throws IOException {
-//        if (logger.isDebugEnabled()) logger.debug("WebSocket frame processing started");
-//
-//        // 클라이언트에서 서버로 데이터 중계
-//        Thread clientToServer = new Thread(() -> {
-//            try {
-//                InputStream clientIn = clientSocket.getInputStream();
-//                WebSocketUtil.relay(clientIn, serverOut, "C->S");
-//                if (logger.isDebugEnabled()) {
-//                    logger.debug("WebSocket C->S relay completed");
-//                }
-//            } catch (IOException e) {
-//                logger.debug("WebSocket C->S relay failed: {}", e.getMessage(), e);
-//            }
-//        }, "WebSocket-C2S");
-//
-//        // 서버에서 클라이언트로 데이터 중계
-//        Thread serverToClient = new Thread(() -> {
-//            try {
-//                WebSocketUtil.relay(serverIn, clientOut, "S->C");
-//                if (logger.isDebugEnabled()) {
-//                    logger.debug("WebSocket S->C relay completed");
-//                }
-//            } catch (IOException e) {
-//                logger.debug("WebSocket S->C relay failed: {}", e.getMessage(), e);
-//            }
-//        }, "WebSocket-S2C");
-//
-//        clientToServer.start();
-//        serverToClient.start();
-//
-//        logger.debug("WebSocket bidirectional relay started");
-//
-//        try {
-//            clientToServer.join();
-//            serverToClient.join();
-//        } catch (InterruptedException e) {
-//            logger.debug("WebSocket threads interrupted: {}", e.getMessage(), e);
-//            Thread.currentThread().interrupt();
-//        }
-//
-//        logger.debug("WebSocket frame processing completed");
-//    }
 
     /**
      * Relay response body to client based on body stream type
      * @param response HTTP response containing body stream information
      * @throws IOException when I/O error occurs
      */
-    private void relayResponseBody(HttpResponse response) throws IOException {
+    private void relayResponseBody(String rid, HttpResponse response) throws IOException {
         BodyStream bodyStream = response.getBodyStream();
         
         if (logger.isDebugEnabled()) {
-            logger.debug("Relaying response body with type: {}", bodyStream);
+            logger.debug("{}, Relaying response body with type: {}"
+                    , rid
+                    , bodyStream
+            );
         }
         
         switch (bodyStream) {
             case NONE:
             case NULL:
-                // No body to relay
-                if (logger.isTraceEnabled()) {
-                    logger.trace("No response body to relay");
+                // No-body to relay
+                if (logger.isDebugEnabled()) {
+                    logger.trace("{}, No response body to relay"
+                            , rid
+                    );
                 }
                 break;
                 
             case CONTENT_LENGTH:
-                relayContentLengthBody(response);
+                relayContentLengthBody(rid, response);
                 break;
                 
             case CHUNKED:
-                relayChunkedBody();
+                relayChunkedBody(rid);
                 break;
                 
             case WEBSOCKET:
                 // WebSocket upgrade response - no body to relay
                 if (logger.isDebugEnabled()) {
-                    logger.debug("WebSocket upgrade response - no body to relay");
+                    logger.debug("{}, WebSocket upgrade response - no body to relay"
+                            , rid
+                    );
                 }
                 break;
                 
             case UNTIL_CLOSE:
-                relayUntilCloseBody();
+                relayUntilCloseBody(rid);
                 break;
                 
             default:
-                logger.warn("Unknown body stream type: {}", bodyStream);
+                logger.warn("{}, Unknown body stream type: {}"
+                        , bodyStream
+                        , rid
+                );
                 break;
         }
     }
@@ -338,17 +287,22 @@ public class PassExecutor implements Runnable {
      * @param response HTTP response
      * @throws IOException when I/O error occurs
      */
-    private void relayContentLengthBody(HttpResponse response) throws IOException {
+    private void relayContentLengthBody(String rid, HttpResponse response) throws IOException {
         Integer contentLength = response.getContentLength();
         if (contentLength == null || contentLength <= 0) {
             if (logger.isDebugEnabled()) {
-                logger.debug("No content length or zero content length");
+                logger.debug("{}, No content length or zero content length"
+                        , rid
+                );
             }
             return;
         }
         
         if (logger.isDebugEnabled()) {
-            logger.debug("Relaying content-length body: {} bytes", contentLength);
+            logger.debug("{}, Relaying content-length body: {} bytes"
+                    , rid
+                    , contentLength
+            );
         }
         
         byte[] buffer = new byte[HTTP.BODY_BUFFER_SIZE];
@@ -359,21 +313,30 @@ public class PassExecutor implements Runnable {
             int bytesRead = serverIn.read(buffer, 0, bytesToRead);
             
             if (bytesRead == -1) {
-                logger.warn("Unexpected end of stream while reading content-length body");
+                logger.warn("{}, Unexpected end of stream while reading content-length body"
+                        , rid
+                );
                 break;
             }
             
             clientOut.write(buffer, 0, bytesRead);
             remainingBytes -= bytesRead;
             
-            if (logger.isTraceEnabled()) {
-                logger.trace("Relayed {} bytes, remaining: {}", bytesRead, remainingBytes);
+            if (logger.isDebugEnabled()) {
+                logger.debug("{}, Relayed {} bytes, remaining: {}"
+                        , rid
+                        , bytesRead
+                        , remainingBytes
+                );
             }
         }
         
         clientOut.flush();
+
         if (logger.isDebugEnabled()) {
-            logger.debug("Content-length body relay completed");
+            logger.debug("{}, Content-length body relay completed"
+                    , rid
+            );
         }
     }
     
@@ -381,20 +344,24 @@ public class PassExecutor implements Runnable {
      * Relay chunked transfer encoding response body
      * @throws IOException when I/O error occurs
      */
-    private void relayChunkedBody() throws IOException {
+    private void relayChunkedBody(String rid) throws IOException {
         if (logger.isDebugEnabled()) {
-            logger.debug("Relaying chunked response body");
+            logger.debug("{}, Relaying chunked response body"
+                    , rid
+            );
         }
-        
-        byte[] buffer = new byte[HTTP.BODY_BUFFER_SIZE];
+
+        ByteBuffer chunkSizeBuffer = new ByteBuffer(HTTP.CHUNK_SIZE_LINE_LENGTH);
+        byte[] chunkBodyBuffer = new byte[HTTP.BODY_BUFFER_SIZE];
         
         while (true) {
             // Read chunk size line
-            ByteBuffer chunkSizeBuffer = new ByteBuffer(new byte[128]);
-            int bytesRead = serverIn.readLine(chunkSizeBuffer, 128);
+            int bytesRead = serverIn.readLine(chunkSizeBuffer, HTTP.CHUNK_SIZE_LINE_LENGTH);
             
             if (bytesRead == -1) {
-                logger.warn("Unexpected end of stream while reading chunk size");
+                logger.warn("{}, Unexpected end of stream while reading chunk size"
+                        , rid
+                );
                 break;
             }
             
@@ -408,12 +375,18 @@ public class PassExecutor implements Runnable {
             try {
                 chunkSize = Integer.parseInt(chunkSizeLine.trim(), 16);
             } catch (NumberFormatException e) {
-                logger.error("Invalid chunk size: {}", chunkSizeLine);
+                logger.error("{}, Invalid chunk size: {}"
+                        , rid
+                        , chunkSizeLine
+                );
                 break;
             }
 
-            if (logger.isTraceEnabled()) {
-                logger.trace("Chunk size: {}", chunkSize);
+            if (logger.isDebugEnabled()) {
+                logger.debug("{}, Chunk size: {}"
+                        , rid
+                        , chunkSize
+                );
             }
 
             // Write chunk size to client
@@ -423,7 +396,9 @@ public class PassExecutor implements Runnable {
             if (chunkSize == 0) {
                 // End of chunked body - read and relay trailer headers
                 if (logger.isDebugEnabled()) {
-                    logger.debug("End of chunked body (chunk size 0) - reading trailer headers");
+                    logger.debug("{}, End of chunked body (chunk size 0) - reading trailer headers"
+                            , rid
+                    );
                 }
                 
                 clientOut.write(HTTP.CRLF);
@@ -434,37 +409,46 @@ public class PassExecutor implements Runnable {
             // Relay chunk data
             int remainingBytes = chunkSize;
             while (remainingBytes > 0) {
-                int bytesToRead = Math.min(buffer.length, remainingBytes);
-                bytesRead = serverIn.read(buffer, 0, bytesToRead);
+                int bytesToRead = Math.min(chunkBodyBuffer.length, remainingBytes);
+                bytesRead = serverIn.read(chunkBodyBuffer, 0, bytesToRead);
                 
                 if (bytesRead == -1) {
-                    logger.warn("Unexpected end of stream while reading chunk data");
+                    logger.warn("{}, Unexpected end of stream while reading chunk data"
+                            , rid
+                    );
                     break;
                 }
-                clientOut.write(buffer, 0, bytesRead);
+                clientOut.write(chunkBodyBuffer, 0, bytesRead);
                 clientOut.flush();
                 remainingBytes -= bytesRead;
                 
-                if (logger.isTraceEnabled()) {
-                    logger.trace("Relayed {} bytes of chunk, remaining: {}", bytesRead, remainingBytes);
+                if (logger.isDebugEnabled()) {
+                    logger.debug("{}, Relayed {} bytes of chunk, remaining: {}"
+                            , rid
+                            , bytesRead
+                            , remainingBytes
+                    );
                 }
             }
             
-            // Read and relay chunk end (CRLF)
+            // Read and relay chunk end (CR-LF)
             int cr = serverIn.read();
             int lf = serverIn.read();
             if (cr == '\r' && lf == '\n') {
                 clientOut.write(HTTP.CRLF);
                 clientOut.flush();
             } else {
-                logger.warn("Invalid chunk end marker");
+                logger.warn("{}, Invalid chunk end marker", rid);
                 break;
             }
         }
         
         clientOut.flush();
+
         if (logger.isDebugEnabled()) {
-            logger.debug("Chunked body relay completed");
+            logger.debug("{}, Chunked body relay completed"
+                    , rid
+            );
         }
     }
     
@@ -472,9 +456,11 @@ public class PassExecutor implements Runnable {
      * Relay response body until connection close
      * @throws IOException when I/O error occurs
      */
-    private void relayUntilCloseBody() throws IOException {
+    private void relayUntilCloseBody(String rid) throws IOException {
         if (logger.isDebugEnabled()) {
-            logger.debug("Relaying until-close response body");
+            logger.debug("{}, Relaying until-close response body"
+                    , rid
+            );
         }
         
         byte[] buffer = new byte[HTTP.BODY_BUFFER_SIZE];
@@ -491,14 +477,22 @@ public class PassExecutor implements Runnable {
             clientOut.write(buffer, 0, bytesRead);
             totalBytesRelayed += bytesRead;
             
-            if (logger.isTraceEnabled()) {
-                logger.trace("Relayed {} bytes, total: {}", bytesRead, totalBytesRelayed);
+            if (logger.isDebugEnabled()) {
+                logger.debug("{}, Relayed {} bytes, total: {}"
+                        , rid
+                        , bytesRead
+                        , totalBytesRelayed
+                );
             }
         }
         
         clientOut.flush();
+
         if (logger.isDebugEnabled()) {
-            logger.debug("Until-close body relay completed, total bytes: {}", totalBytesRelayed);
+            logger.debug("{}, Until-close body relay completed, total bytes: {}"
+                    , rid
+                    , totalBytesRelayed
+            );
         }
     }
 

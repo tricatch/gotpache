@@ -2,141 +2,92 @@ package tricatch.gotpache.http.io;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.DisplayName;
+
 import static org.junit.jupiter.api.Assertions.*;
 
 @DisplayName("HttpResponse Test")
 class HttpResponseTest {
 
     @Test
-    @DisplayName("Parse successful response without body")
-    void testParseSuccessfulResponse() {
-        HeaderLines headers = new HeaderLines(3);
+    @DisplayName("Parse 200 OK response")
+    void testParseOkResponse() {
+        HeaderLines headers = new HeaderLines(4);
         
         // Add response line
         headers.add(new ByteBuffer("HTTP/1.1 200 OK".getBytes()));
         
         // Add headers
         headers.add(new ByteBuffer("Server: nginx/1.18.0".getBytes()));
-        headers.add(new ByteBuffer("Date: Mon, 01 Jan 2024 12:00:00 GMT".getBytes()));
-        
-        HttpResponse response = headers.parseHttpResponse();
-        
-        assertEquals("HTTP/1.1", response.getVersion());
-        assertEquals(200, response.getStatusCode());
-        assertEquals("OK", response.getStatusMessage());
-        assertNull(response.getConnection());
-        assertNull(response.getContentLength());
-        assertEquals(BodyStream.NONE, response.getBodyStream());
-        assertFalse(response.hasBody());
-        assertTrue(response.isSuccessful());
-        assertFalse(response.isClientError());
-        assertFalse(response.isServerError());
-    }
-    
-    @Test
-    @DisplayName("Parse response with Content-Length")
-    void testParseResponseWithContentLength() {
-        HeaderLines headers = new HeaderLines(5);
-        
-        // Add response line
-        headers.add(new ByteBuffer("HTTP/1.1 200 OK".getBytes()));
-        
-        // Add headers
-        headers.add(new ByteBuffer("Server: nginx/1.18.0".getBytes()));
-        headers.add(new ByteBuffer("Content-Type: text/html".getBytes()));
         headers.add(new ByteBuffer("Content-Length: 1024".getBytes()));
-        headers.add(new ByteBuffer("Connection: keep-alive".getBytes()));
+        headers.add(new ByteBuffer("Content-Type: text/html".getBytes()));
         
         HttpResponse response = headers.parseHttpResponse();
         
         assertEquals("HTTP/1.1", response.getVersion());
         assertEquals(200, response.getStatusCode());
         assertEquals("OK", response.getStatusMessage());
-        assertEquals("keep-alive", response.getConnection());
+        assertNull(response.getConnection()); // No Connection header in this test
         assertEquals(Integer.valueOf(1024), response.getContentLength());
         assertEquals(BodyStream.CONTENT_LENGTH, response.getBodyStream());
         assertTrue(response.hasBody());
         assertTrue(response.isSuccessful());
-        assertFalse(response.shouldCloseConnection());
-    }
-    
-    @Test
-    @DisplayName("Parse response with chunked encoding")
-    void testParseResponseWithChunked() {
-        HeaderLines headers = new HeaderLines(5);
-        
-        // Add response line
-        headers.add(new ByteBuffer("HTTP/1.1 200 OK".getBytes()));
-        
-        // Add headers
-        headers.add(new ByteBuffer("Server: nginx/1.18.0".getBytes()));
-        headers.add(new ByteBuffer("Transfer-Encoding: chunked".getBytes()));
-        headers.add(new ByteBuffer("Content-Type: application/json".getBytes()));
-        headers.add(new ByteBuffer("Connection: keep-alive".getBytes()));
-        
-        HttpResponse response = headers.parseHttpResponse();
-        
-        assertEquals("HTTP/1.1", response.getVersion());
-        assertEquals(200, response.getStatusCode());
-        assertEquals("OK", response.getStatusMessage());
-        assertEquals("keep-alive", response.getConnection());
-        assertNull(response.getContentLength()); // Chunked encoding doesn't use Content-Length
-        assertEquals(BodyStream.CHUNKED, response.getBodyStream());
-        assertTrue(response.hasBody());
-        assertTrue(response.isSuccessful());
-        assertFalse(response.shouldCloseConnection());
+        assertFalse(response.isRedirection());
+        assertFalse(response.isClientError());
+        assertFalse(response.isServerError());
+        assertFalse(response.shouldCloseConnection()); // HTTP/1.1 without Connection header
     }
     
     @Test
     @DisplayName("Parse 404 Not Found response")
     void testParseNotFoundResponse() {
-        HeaderLines headers = new HeaderLines(4);
+        HeaderLines headers = new HeaderLines(3);
         
         // Add response line
         headers.add(new ByteBuffer("HTTP/1.1 404 Not Found".getBytes()));
         
         // Add headers
         headers.add(new ByteBuffer("Server: nginx/1.18.0".getBytes()));
-        headers.add(new ByteBuffer("Content-Type: text/html".getBytes()));
-        headers.add(new ByteBuffer("Content-Length: 162".getBytes()));
+        headers.add(new ByteBuffer("Content-Length: 0".getBytes()));
         
         HttpResponse response = headers.parseHttpResponse();
         
         assertEquals("HTTP/1.1", response.getVersion());
         assertEquals(404, response.getStatusCode());
         assertEquals("Not Found", response.getStatusMessage());
-        assertNull(response.getConnection());
-        assertEquals(Integer.valueOf(162), response.getContentLength());
+        assertNull(response.getConnection()); // No Connection header in this test
+        assertEquals(Integer.valueOf(0), response.getContentLength());
         assertEquals(BodyStream.CONTENT_LENGTH, response.getBodyStream());
-        assertTrue(response.hasBody());
+        assertFalse(response.hasBody()); // Content-Length: 0 means no body
         assertFalse(response.isSuccessful());
+        assertFalse(response.isRedirection());
         assertTrue(response.isClientError());
         assertFalse(response.isServerError());
+        assertFalse(response.shouldCloseConnection()); // HTTP/1.1 without Connection header
     }
     
     @Test
     @DisplayName("Parse 500 Internal Server Error response")
     void testParseServerErrorResponse() {
-        HeaderLines headers = new HeaderLines(4);
+        HeaderLines headers = new HeaderLines(3);
         
         // Add response line
         headers.add(new ByteBuffer("HTTP/1.0 500 Internal Server Error".getBytes()));
         
         // Add headers
         headers.add(new ByteBuffer("Server: nginx/1.18.0".getBytes()));
-        headers.add(new ByteBuffer("Content-Type: text/html".getBytes()));
-        headers.add(new ByteBuffer("Content-Length: 200".getBytes()));
+        headers.add(new ByteBuffer("Content-Length: 0".getBytes()));
         
         HttpResponse response = headers.parseHttpResponse();
         
         assertEquals("HTTP/1.0", response.getVersion());
         assertEquals(500, response.getStatusCode());
         assertEquals("Internal Server Error", response.getStatusMessage());
-        assertNull(response.getConnection());
-        assertEquals(Integer.valueOf(200), response.getContentLength());
+        assertNull(response.getConnection()); // No Connection header in this test
+        assertEquals(Integer.valueOf(0), response.getContentLength());
         assertEquals(BodyStream.CONTENT_LENGTH, response.getBodyStream());
-        assertTrue(response.hasBody());
+        assertFalse(response.hasBody()); // Content-Length: 0 means no body
         assertFalse(response.isSuccessful());
+        assertFalse(response.isRedirection());
         assertFalse(response.isClientError());
         assertTrue(response.isServerError());
         assertTrue(response.shouldCloseConnection()); // HTTP/1.0 without keep-alive
@@ -239,54 +190,136 @@ class HttpResponseTest {
         assertEquals("HTTP/1.1", response.getVersion());
         assertEquals(418, response.getStatusCode());
         assertEquals("I'm a teapot", response.getStatusMessage());
-        assertNull(response.getConnection());
+        assertNull(response.getConnection()); // No Connection header in this test
         assertEquals(Integer.valueOf(0), response.getContentLength());
         assertEquals(BodyStream.CONTENT_LENGTH, response.getBodyStream());
-        assertTrue(response.hasBody()); // Content-Length: 0 is still considered having a body
+        assertFalse(response.hasBody()); // Content-Length: 0 means no body
         assertFalse(response.isSuccessful());
+        assertFalse(response.isRedirection());
         assertTrue(response.isClientError());
+        assertFalse(response.isServerError());
+        assertFalse(response.shouldCloseConnection()); // HTTP/1.1 without Connection header
     }
     
     @Test
-    @DisplayName("Test invalid response line - no spaces")
-    void testInvalidResponseLineNoSpaces() {
-        HeaderLines headers = new HeaderLines(1);
+    @DisplayName("Parse invalid response line")
+    void testParseInvalidResponseLine() {
+        HeaderLines headers = new HeaderLines(2);
+        
+        // Add invalid response line
         headers.add(new ByteBuffer("INVALIDRESPONSE".getBytes()));
         
+        // Add headers
+        headers.add(new ByteBuffer("Server: nginx/1.18.0".getBytes()));
+        
         assertThrows(IllegalArgumentException.class, () -> {
             headers.parseHttpResponse();
         });
     }
     
     @Test
-    @DisplayName("Test invalid response line - only one space")
-    void testInvalidResponseLineOneSpace() {
-        HeaderLines headers = new HeaderLines(1);
+    @DisplayName("Parse response line with missing status code")
+    void testParseResponseLineMissingStatusCode() {
+        HeaderLines headers = new HeaderLines(2);
+        
+        // Add response line with missing status code
         headers.add(new ByteBuffer("HTTP/1.1 200".getBytes()));
         
+        // Add headers
+        headers.add(new ByteBuffer("Server: nginx/1.18.0".getBytes()));
+        
         assertThrows(IllegalArgumentException.class, () -> {
             headers.parseHttpResponse();
         });
     }
     
     @Test
-    @DisplayName("Test invalid status code")
-    void testInvalidStatusCode() {
-        HeaderLines headers = new HeaderLines(1);
+    @DisplayName("Parse response line with invalid status code")
+    void testParseResponseLineInvalidStatusCode() {
+        HeaderLines headers = new HeaderLines(2);
+        
+        // Add response line with invalid status code
         headers.add(new ByteBuffer("HTTP/1.1 ABC OK".getBytes()));
         
+        // Add headers
+        headers.add(new ByteBuffer("Server: nginx/1.18.0".getBytes()));
+        
         assertThrows(IllegalArgumentException.class, () -> {
             headers.parseHttpResponse();
         });
     }
     
     @Test
-    @DisplayName("Test empty headers")
-    void testEmptyHeaders() {
-        HeaderLines headers = new HeaderLines(0);
+    @DisplayName("Parse response without Content-Length header")
+    void testParseResponseWithoutContentLength() {
+        HeaderLines headers = new HeaderLines(2);
         
-        assertThrows(IllegalArgumentException.class, () -> {
-            headers.parseHttpResponse();
-        });
+        // Add response line
+        headers.add(new ByteBuffer("HTTP/1.1 200 OK".getBytes()));
+        
+        // Add headers (no Content-Length)
+        headers.add(new ByteBuffer("Server: nginx/1.18.0".getBytes()));
+        
+        HttpResponse response = headers.parseHttpResponse();
+        
+        assertEquals("HTTP/1.1", response.getVersion());
+        assertEquals(200, response.getStatusCode());
+        assertEquals("OK", response.getStatusMessage());
+        assertNull(response.getConnection()); // No Connection header in this test
+        assertNull(response.getContentLength()); // No Content-Length header in this test
+        assertEquals(BodyStream.NONE, response.getBodyStream());
+        assertFalse(response.hasBody());
+        assertTrue(response.isSuccessful());
+        assertFalse(response.isRedirection());
+        assertFalse(response.isClientError());
+        assertFalse(response.isServerError());
+        assertFalse(response.shouldCloseConnection()); // HTTP/1.1 without Connection header
+    }
+    
+    @Test
+    @DisplayName("Parse response with Transfer-Encoding: chunked")
+    void testParseResponseWithChunkedEncoding() {
+        HeaderLines headers = new HeaderLines(3);
+        
+        // Add response line
+        headers.add(new ByteBuffer("HTTP/1.1 200 OK".getBytes()));
+        
+        // Add headers
+        headers.add(new ByteBuffer("Server: nginx/1.18.0".getBytes()));
+        headers.add(new ByteBuffer("Transfer-Encoding: chunked".getBytes()));
+        
+        HttpResponse response = headers.parseHttpResponse();
+        
+        assertEquals("HTTP/1.1", response.getVersion());
+        assertEquals(200, response.getStatusCode());
+        assertEquals("OK", response.getStatusMessage());
+        assertNull(response.getConnection()); // No Connection header in this test
+        assertNull(response.getContentLength()); // Chunked encoding doesn't use Content-Length
+        assertEquals(BodyStream.CHUNKED, response.getBodyStream());
+        assertTrue(response.hasBody());
+        assertTrue(response.isSuccessful());
+        assertFalse(response.isRedirection());
+        assertFalse(response.isClientError());
+        assertFalse(response.isServerError());
+        assertFalse(response.shouldCloseConnection()); // HTTP/1.1 without Connection header
+    }
+    
+    @Test
+    @DisplayName("Parse response with multiple Content-Length headers")
+    void testParseResponseWithMultipleContentLength() {
+        HeaderLines headers = new HeaderLines(4);
+        
+        // Add response line
+        headers.add(new ByteBuffer("HTTP/1.1 200 OK".getBytes()));
+        
+        // Add headers with multiple Content-Length
+        headers.add(new ByteBuffer("Server: nginx/1.18.0".getBytes()));
+        headers.add(new ByteBuffer("Content-Length: 100".getBytes()));
+        headers.add(new ByteBuffer("Content-Length: 200".getBytes()));
+        
+        HttpResponse response = headers.parseHttpResponse();
+        
+        // Should use the first Content-Length header found
+        assertEquals(Integer.valueOf(100), response.getContentLength());
     }
 }

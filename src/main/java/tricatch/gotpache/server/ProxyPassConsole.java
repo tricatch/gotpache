@@ -16,13 +16,11 @@ import java.util.Map;
 
 public class ProxyPassConsole implements Runnable {
 
-    private static Logger logger = LoggerFactory.getLogger(ProxyPassConsole.class);
+    private static final Logger logger = LoggerFactory.getLogger(ProxyPassConsole.class);
 
-    protected Config config = null;
+    protected Config config;
 
     protected Map<String, ConsoleCommand> commands = new HashMap<>();
-
-    private ServerSocket svrSocket = null;
 
     public ProxyPassConsole(Config config) {
 
@@ -33,6 +31,8 @@ public class ProxyPassConsole implements Runnable {
 
     @Override
     public void run() {
+
+        ServerSocket svrSocket = null;
 
         try {
 
@@ -59,6 +59,8 @@ public class ProxyPassConsole implements Runnable {
 
         } catch (Exception e) {
             logger.error(e.getMessage(), e);
+        } finally {
+            if( svrSocket!=null ) try{ svrSocket.close(); } catch (Exception e){}
         }
     }
 }

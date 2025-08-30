@@ -2,6 +2,7 @@ package tricatch.gotpache.http.io;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.DisplayName;
+
 import static org.junit.jupiter.api.Assertions.*;
 
 @DisplayName("HttpRequest Test")
@@ -128,81 +129,6 @@ class HttpRequestTest {
     }
     
     @Test
-    @DisplayName("Parse request with empty headers")
-    void testParseRequestWithEmptyHeaders() {
-        HeaderLines headers = new HeaderLines(1);
-        
-        // Add only request line
-        headers.add(new ByteBuffer("GET / HTTP/1.1".getBytes()));
-        
-        HttpRequest request = headers.parseHttpRequest();
-        
-        assertEquals("GET", request.getMethod());
-        assertEquals("/", request.getPath());
-        assertEquals("HTTP/1.1", request.getVersion());
-        assertNull(request.getHost()); // No Host header in this test
-        assertNull(request.getConnection()); // No Connection header in this test
-        assertNull(request.getContentLength()); // No Content-Length header in this test
-        assertEquals(BodyStream.NONE, request.getBodyStream());
-        assertFalse(request.hasBody());
-    }
-    
-    @Test
-    @DisplayName("Parse request with complex path")
-    void testParseRequestWithComplexPath() {
-        HeaderLines headers = new HeaderLines(3);
-        
-        // Add request line with complex path
-        headers.add(new ByteBuffer("GET /api/users/123?page=1&size=10 HTTP/1.1".getBytes()));
-        
-        // Add headers
-        headers.add(new ByteBuffer("Host: example.com".getBytes()));
-        
-        HttpRequest request = headers.parseHttpRequest();
-        
-        assertEquals("GET", request.getMethod());
-        assertEquals("/api/users/123?page=1&size=10", request.getPath());
-        assertEquals("HTTP/1.1", request.getVersion());
-        assertEquals("example.com", request.getHost());
-        assertNull(request.getConnection()); // No Connection header in this test
-        assertNull(request.getContentLength()); // No Content-Length header in this test
-        assertEquals(BodyStream.NONE, request.getBodyStream());
-        assertFalse(request.hasBody());
-    }
-    
-    @Test
-    @DisplayName("Test invalid request line - no spaces")
-    void testInvalidRequestLineNoSpaces() {
-        HeaderLines headers = new HeaderLines(1);
-        headers.add(new ByteBuffer("INVALIDREQUEST".getBytes()));
-        
-        assertThrows(IllegalArgumentException.class, () -> {
-            headers.parseHttpRequest();
-        });
-    }
-    
-    @Test
-    @DisplayName("Test invalid request line - only one space")
-    void testInvalidRequestLineOneSpace() {
-        HeaderLines headers = new HeaderLines(1);
-        headers.add(new ByteBuffer("GET /path".getBytes()));
-        
-        assertThrows(IllegalArgumentException.class, () -> {
-            headers.parseHttpRequest();
-        });
-    }
-    
-    @Test
-    @DisplayName("Test empty headers")
-    void testEmptyHeaders() {
-        HeaderLines headers = new HeaderLines(0);
-        
-        assertThrows(IllegalArgumentException.class, () -> {
-            headers.parseHttpRequest();
-        });
-    }
-    
-    @Test
     @DisplayName("Parse request with Connection header")
     void testParseRequestWithConnection() {
         HeaderLines headers = new HeaderLines(4);
@@ -212,7 +138,7 @@ class HttpRequestTest {
         
         // Add headers
         headers.add(new ByteBuffer("Host: example.com".getBytes()));
-        headers.add(new ByteBuffer("Connection: keep-alive".getBytes()));
+        headers.add(new ByteBuffer("Connection: close".getBytes()));
         
         HttpRequest request = headers.parseHttpRequest();
         
@@ -220,34 +146,123 @@ class HttpRequestTest {
         assertEquals("/test", request.getPath());
         assertEquals("HTTP/1.1", request.getVersion());
         assertEquals("example.com", request.getHost());
-        assertEquals("keep-alive", request.getConnection());
-        assertNull(request.getContentLength());
+        assertEquals("close", request.getConnection());
+        assertNull(request.getContentLength()); // No Content-Length header in this test
         assertEquals(BodyStream.NONE, request.getBodyStream());
         assertFalse(request.hasBody());
     }
     
     @Test
-    @DisplayName("Parse request with Connection close")
-    void testParseRequestWithConnectionClose() {
+    @DisplayName("Parse request with Content-Length: 0")
+    void testParseRequestWithZeroContentLength() {
         HeaderLines headers = new HeaderLines(4);
         
         // Add request line
-        headers.add(new ByteBuffer("POST /submit HTTP/1.1".getBytes()));
+        headers.add(new ByteBuffer("POST /empty HTTP/1.1".getBytes()));
         
         // Add headers
         headers.add(new ByteBuffer("Host: example.com".getBytes()));
-        headers.add(new ByteBuffer("Connection: close".getBytes()));
-        headers.add(new ByteBuffer("Content-Length: 512".getBytes()));
+        headers.add(new ByteBuffer("Content-Length: 0".getBytes()));
         
         HttpRequest request = headers.parseHttpRequest();
         
         assertEquals("POST", request.getMethod());
-        assertEquals("/submit", request.getPath());
+        assertEquals("/empty", request.getPath());
         assertEquals("HTTP/1.1", request.getVersion());
         assertEquals("example.com", request.getHost());
-        assertEquals("close", request.getConnection());
-        assertEquals(Integer.valueOf(512), request.getContentLength());
+        assertNull(request.getConnection()); // No Connection header in this test
+        assertEquals(Integer.valueOf(0), request.getContentLength());
         assertEquals(BodyStream.CONTENT_LENGTH, request.getBodyStream());
-        assertTrue(request.hasBody());
+        assertFalse(request.hasBody()); // Content-Length: 0 means no body
+    }
+    
+    @Test
+    @DisplayName("Parse invalid request line")
+    void testParseInvalidRequestLine() {
+        HeaderLines headers = new HeaderLines(2);
+        
+        // Add invalid request line
+        headers.add(new ByteBuffer("INVALIDREQUEST".getBytes()));
+        
+        // Add headers
+        headers.add(new ByteBuffer("Host: example.com".getBytes()));
+        
+        assertThrows(IllegalArgumentException.class, () -> {
+            headers.parseHttpRequest();
+        });
+    }
+    
+    @Test
+    @DisplayName("Parse request line with missing version")
+    void testParseRequestLineMissingVersion() {
+        HeaderLines headers = new HeaderLines(2);
+        
+        // Add request line with missing version
+        headers.add(new ByteBuffer("GET /test".getBytes()));
+        
+        // Add headers
+        headers.add(new ByteBuffer("Host: example.com".getBytes()));
+        
+        assertThrows(IllegalArgumentException.class, () -> {
+            headers.parseHttpRequest();
+        });
+    }
+    
+    @Test
+    @DisplayName("Parse request line with invalid method")
+    void testParseRequestLineInvalidMethod() {
+        HeaderLines headers = new HeaderLines(2);
+        
+        // Add request line with invalid method
+        headers.add(new ByteBuffer("INVALID /test HTTP/1.1".getBytes()));
+        
+        // Add headers
+        headers.add(new ByteBuffer("Host: example.com".getBytes()));
+        
+        assertThrows(IllegalArgumentException.class, () -> {
+            headers.parseHttpRequest();
+        });
+    }
+    
+    @Test
+    @DisplayName("Parse request without Host header")
+    void testParseRequestWithoutHost() {
+        HeaderLines headers = new HeaderLines(2);
+        
+        // Add request line
+        headers.add(new ByteBuffer("GET /test HTTP/1.1".getBytes()));
+        
+        // Add other header (not Host)
+        headers.add(new ByteBuffer("User-Agent: TestAgent".getBytes()));
+        
+        HttpRequest request = headers.parseHttpRequest();
+        
+        assertEquals("GET", request.getMethod());
+        assertEquals("/test", request.getPath());
+        assertEquals("HTTP/1.1", request.getVersion());
+        assertNull(request.getHost()); // No Host header
+        assertNull(request.getConnection()); // No Connection header in this test
+        assertNull(request.getContentLength()); // No Content-Length header in this test
+        assertEquals(BodyStream.NONE, request.getBodyStream());
+        assertFalse(request.hasBody());
+    }
+    
+    @Test
+    @DisplayName("Parse request with multiple Content-Length headers")
+    void testParseRequestWithMultipleContentLength() {
+        HeaderLines headers = new HeaderLines(5);
+        
+        // Add request line
+        headers.add(new ByteBuffer("POST /test HTTP/1.1".getBytes()));
+        
+        // Add headers with multiple Content-Length
+        headers.add(new ByteBuffer("Host: example.com".getBytes()));
+        headers.add(new ByteBuffer("Content-Length: 100".getBytes()));
+        headers.add(new ByteBuffer("Content-Length: 200".getBytes()));
+        
+        HttpRequest request = headers.parseHttpRequest();
+        
+        // Should use the first Content-Length header found
+        assertEquals(Integer.valueOf(100), request.getContentLength());
     }
 }

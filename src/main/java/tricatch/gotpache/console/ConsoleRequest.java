@@ -1,19 +1,14 @@
 package tricatch.gotpache.console;
 
-import tricatch.gotpache.http.HTTP;
-import tricatch.gotpache.util.ByteUtils;
-
 import java.io.IOException;
 import java.io.InputStream;
 
 public class ConsoleRequest {
 
-    private String method = null;
-    private String uri = null;
-    private InputStream in;
+    private final String method = null;
+    private final String uri = null;
 
     public ConsoleRequest(InputStream in) throws IOException {
-        this.in = in;
         preParse();
     }
 

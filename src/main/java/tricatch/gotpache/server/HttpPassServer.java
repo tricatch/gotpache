@@ -15,22 +15,20 @@ import java.net.Socket;
 
 public class HttpPassServer extends AbstractServer {
 
-    private static Logger logger = LoggerFactory.getLogger(HttpPassServer.class);
-
-
-    private VirtualHosts virtualHosts;
-    private ServerSocket svrSocket = null;
+    private static final Logger logger = LoggerFactory.getLogger(HttpPassServer.class);
 
     public HttpPassServer(Config config, VirtualHosts virtualHosts) throws ConfigException {
         super(config, virtualHosts);
     }
 
     @Override
-    public void conifg() throws ConfigException {
+    public void conifg() {
         //nothing to do
     }
 
     public void run() {
+
+        ServerSocket svrSocket = null;
 
         try {
 
@@ -59,6 +57,8 @@ public class HttpPassServer extends AbstractServer {
 
         } catch (Exception e) {
             logger.error(e.getMessage(), e);
+        } finally {
+            if( svrSocket!=null ) try{ svrSocket.close(); }catch (Exception e){}
         }
     }
 }

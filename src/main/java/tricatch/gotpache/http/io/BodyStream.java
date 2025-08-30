@@ -6,12 +6,12 @@ package tricatch.gotpache.http.io;
  */
 public enum BodyStream {
     /**
-     * No body stream (null/undefined)
+     * No-body stream (null/undefined)
      */
     NULL,
     
     /**
-     * No body content (empty body)
+     * No-body content (empty body)
      */
     NONE,
     

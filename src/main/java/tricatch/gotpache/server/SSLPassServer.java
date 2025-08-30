@@ -26,7 +26,7 @@ import java.security.cert.X509Certificate;
 
 public class SSLPassServer extends AbstractServer {
 
-    private static Logger logger = LoggerFactory.getLogger(SSLPassServer.class);
+    private static final Logger logger = LoggerFactory.getLogger(SSLPassServer.class);
 
     private SSLContext sslContext;
 
@@ -44,7 +44,7 @@ public class SSLPassServer extends AbstractServer {
 
             KeyTool keyTool = new KeyTool();
             X509Certificate rootCertificate = keyTool.readCertificate("./conf", ca.getCert());
-            PrivateKey rootPrivateKey = null;
+            PrivateKey rootPrivateKey;
 
             if( config.getCa().getPriPwd()!=null && !ca.getPriPwd().trim().isEmpty() ){
                 rootPrivateKey = keyTool.readPrivateKey("./conf", ca.getPriKey(), ca.getPriPwd().trim());
@@ -70,12 +70,13 @@ public class SSLPassServer extends AbstractServer {
             engine.setUseClientMode(false);
 
         }catch(Exception e){
-            e.printStackTrace();
             throw new ConfigException( "ssl config error - " + e.getMessage(), e );
         }
     }
 
     public void run() {
+
+        SSLServerSocket sslSvrSocket = null;
 
         try {
 
@@ -88,7 +89,7 @@ public class SSLPassServer extends AbstractServer {
             logger.info("{} client.read.timeout: {}", clazzName, https.getReadTimeout() );
 
             SSLServerSocketFactory ssf = this.sslContext.getServerSocketFactory();
-            SSLServerSocket sslSvrSocket = (SSLServerSocket) ssf.createServerSocket(https.getPort());
+            sslSvrSocket = (SSLServerSocket) ssf.createServerSocket(https.getPort());
             sslSvrSocket.setEnabledProtocols(new String[] { "TLSv1.3" });
 
             while (true) {
@@ -97,7 +98,9 @@ public class SSLPassServer extends AbstractServer {
 
                 if (socket == null) continue;
 
-                if (logger.isTraceEnabled()) logger.trace("new pass - h{}", socket.hashCode());
+                if (logger.isDebugEnabled()){
+                    logger.debug("New client - h{}", socket.hashCode());
+                }
 
                 socket.setSoTimeout(https.getReadTimeout());
 
@@ -106,6 +109,8 @@ public class SSLPassServer extends AbstractServer {
 
         } catch (Exception e) {
             logger.error(e.getMessage(), e);
+        } finally {
+            if( sslSvrSocket!=null ) try{ sslSvrSocket.close(); } catch (Exception e){}
         }
     }
 }

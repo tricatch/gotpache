@@ -1,10 +1,11 @@
 package tricatch.gotpache.util;
 
 import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 
 public class StringUtils {
 
-    private static final Charset UTF8 = Charset.forName("UTF-8");
+    private static final Charset UTF8 = StandardCharsets.UTF_8;
 
     public static String toString(byte[] buf){
 
@@ -25,9 +26,7 @@ public class StringUtils {
     public static boolean isEmpty(String input) {
     	
     	if( input==null ) return true;
-    	if( input.length()==0 ) return true;
-    	if( input.trim().length()==0 ) return true;
-    	
-    	return false;
+    	if( input.isEmpty() ) return true;
+        return input.trim().isEmpty();
     }
 }

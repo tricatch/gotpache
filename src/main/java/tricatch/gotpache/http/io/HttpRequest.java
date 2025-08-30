@@ -6,14 +6,14 @@ package tricatch.gotpache.http.io;
  */
 public class HttpRequest {
     
-    private String method;
-    private String path;
-    private String version;
-    private String host;
-    private String connection;
-    private Integer contentLength;
-    private BodyStream bodyStream;
-    private HeaderLines headers;
+    private final String method;
+    private final String path;
+    private final String version;
+    private final String host;
+    private final String connection;
+    private final Integer contentLength;
+    private final BodyStream bodyStream;
+    private final HeaderLines headers;
     
     /**
      * Constructor with all request information
@@ -106,7 +106,14 @@ public class HttpRequest {
      * @return true if request has body
      */
     public boolean hasBody() {
-        return bodyStream != BodyStream.NONE && bodyStream != BodyStream.NULL;
+        if (bodyStream == BodyStream.NONE || bodyStream == BodyStream.NULL) {
+            return false;
+        }
+        // Content-Length: 0 means no body even if bodyStream is CONTENT_LENGTH
+        if (bodyStream == BodyStream.CONTENT_LENGTH && contentLength != null && contentLength == 0) {
+            return false;
+        }
+        return true;
     }
     
     /**

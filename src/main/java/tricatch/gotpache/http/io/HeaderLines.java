@@ -1,7 +1,6 @@
 package tricatch.gotpache.http.io;
 
 import java.util.ArrayList;
-import java.io.IOException;
 import tricatch.gotpache.http.HTTP;
 
 /**
@@ -105,6 +104,28 @@ public class HeaderLines extends ArrayList<ByteBuffer> {
      */
     public boolean hasHeader(byte[] headerNameBytes) {
         return findHeaderLine(headerNameBytes) != null;
+    }
+    
+    /**
+     * Check if HTTP method is valid
+     * @param method HTTP method to validate
+     * @return true if method is valid
+     */
+    private boolean isValidHttpMethod(String method) {
+        if (method == null || method.isEmpty()) {
+            return false;
+        }
+        
+        // Standard HTTP methods
+        return "GET".equals(method) || 
+               "POST".equals(method) || 
+               "PUT".equals(method) || 
+               "DELETE".equals(method) || 
+               "HEAD".equals(method) || 
+               "OPTIONS".equals(method) || 
+               "TRACE".equals(method) || 
+               "CONNECT".equals(method) || 
+               "PATCH".equals(method);
     }
     
     /**
@@ -345,7 +366,7 @@ public class HeaderLines extends ArrayList<ByteBuffer> {
         int totalSize = 0;
         for (ByteBuffer headerBuffer : this) {
             totalSize += headerBuffer.getLength();
-            totalSize += 2; // Add CRLF for each line
+            totalSize += 2; // Add CR-LF for each line
         }
         return totalSize;
     }
@@ -419,6 +440,11 @@ public class HeaderLines extends ArrayList<ByteBuffer> {
         String path = new String(requestBytes, firstSpaceIndex + 1, secondSpaceIndex - firstSpaceIndex - 1);
         String version = new String(requestBytes, secondSpaceIndex + 1, requestLength - secondSpaceIndex - 1);
         
+        // Validate HTTP method
+        if (!isValidHttpMethod(method)) {
+            throw new IllegalArgumentException("Invalid HTTP method: " + method);
+        }
+        
         // Extract host from headers
         String host = getHeaderValueAsString(HTTP.HEADER.HOST);
         
@@ -455,7 +481,7 @@ public class HeaderLines extends ArrayList<ByteBuffer> {
             }
         }
         
-        // Check if method typically has no body
+        // Check if method typically has no-body
         if (!isEmpty()) {
             ByteBuffer requestLine = get(0);
             byte[] requestBytes = requestLine.getBuffer();
@@ -478,7 +504,7 @@ public class HeaderLines extends ArrayList<ByteBuffer> {
             }
         }
         
-        // Default to no body
+        // Default to no-body
         return BodyStream.NONE;
     }
     
@@ -577,10 +603,10 @@ public class HeaderLines extends ArrayList<ByteBuffer> {
             }
         }
         
-        // For HEAD requests, responses typically have no body
+        // For HEAD requests, responses typically have no-body
         // This is handled at the application level, not here
         
-        // Default to no body for responses without explicit content length or transfer encoding
+        // Default to no-body for responses without explicit content length or transfer encoding
         return BodyStream.NONE;
     }
 }

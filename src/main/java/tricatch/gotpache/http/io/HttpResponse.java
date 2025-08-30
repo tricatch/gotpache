@@ -6,13 +6,13 @@ package tricatch.gotpache.http.io;
  */
 public class HttpResponse {
     
-    private String version;
-    private int statusCode;
-    private String statusMessage;
-    private String connection;
-    private Integer contentLength;
-    private BodyStream bodyStream;
-    private HeaderLines headers;
+    private final String version;
+    private final int statusCode;
+    private final String statusMessage;
+    private final String connection;
+    private final Integer contentLength;
+    private final BodyStream bodyStream;
+    private final HeaderLines headers;
     
     /**
      * Constructor with all response information
@@ -95,7 +95,14 @@ public class HttpResponse {
      * @return true if response has body
      */
     public boolean hasBody() {
-        return bodyStream != BodyStream.NONE && bodyStream != BodyStream.NULL;
+        if (bodyStream == BodyStream.NONE || bodyStream == BodyStream.NULL) {
+            return false;
+        }
+        // Content-Length: 0 means no body even if bodyStream is CONTENT_LENGTH
+        if (bodyStream == BodyStream.CONTENT_LENGTH && contentLength != null && contentLength == 0) {
+            return false;
+        }
+        return true;
     }
     
     /**

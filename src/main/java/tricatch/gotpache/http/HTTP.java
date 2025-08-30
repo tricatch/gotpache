@@ -3,8 +3,12 @@ package tricatch.gotpache.http;
 public class HTTP {
 
     public static final int INIT_HEADER_LINES = 10;
+    public static final int INIT_HEADER_LENGTH = 256;
     public static final int MAX_HEADER_LENGTH = 8 * 1024;
     public static final int BODY_BUFFER_SIZE = 16 * 1024;
+
+    public static final int CHUNK_SIZE_LINE_LENGTH = 128;
+
 
     public static class HEADER {
         public static final byte[] HOST = "Host".getBytes();
