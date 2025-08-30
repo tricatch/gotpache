@@ -2,7 +2,6 @@ package tricatch.gotpache.server;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import tricatch.gotpache.ProxyPassServer;
 import tricatch.gotpache.cfg.Config;
 import tricatch.gotpache.cfg.attr.Console;
 import tricatch.gotpache.console.ConsoleCommand;
@@ -54,7 +53,7 @@ public class ProxyPassConsole implements Runnable {
 
                 socket.setSoTimeout(console.getConnectTimeout());
 
-                ProxyPassServer.requestExecute(new ConsoleExecutor(socket, commands, config));
+                VThreadExecutor.run(new ConsoleExecutor(socket, commands, config));
             }
 
         } catch (Exception e) {

@@ -3,7 +3,6 @@ package tricatch.gotpache.server;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import tricatch.gotpache.ProxyPassServer;
 import tricatch.gotpache.cfg.Config;
 import tricatch.gotpache.cfg.attr.Http;
 import tricatch.gotpache.exception.ConfigException;
@@ -52,7 +51,7 @@ public class HttpPassServer extends AbstractServer {
 
                 socket.setSoTimeout(http.getConnectTimeout());
 
-                ProxyPassServer.requestExecute(new PassExecutor(socket, this.virtualHosts, http.getConnectTimeout(), http.getReadTimeout()));
+                VThreadExecutor.run(new PassExecutor(socket, this.virtualHosts, http.getConnectTimeout(), http.getReadTimeout()));
             }
 
         } catch (Exception e) {

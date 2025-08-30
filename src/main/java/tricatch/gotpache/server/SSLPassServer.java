@@ -4,7 +4,6 @@ import io.github.tricatch.gotpache.cert.KeyTool;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import tricatch.gotpache.ProxyPassServer;
 import tricatch.gotpache.cert.MultiDomainCertKeyManager;
 import tricatch.gotpache.cfg.Config;
 import tricatch.gotpache.cfg.attr.Ca;
@@ -104,7 +103,7 @@ public class SSLPassServer extends AbstractServer {
 
                 socket.setSoTimeout(https.getReadTimeout());
 
-                ProxyPassServer.requestExecute(new PassExecutor(socket, this.virtualHosts, https.getConnectTimeout(), https.getReadTimeout()));
+                VThreadExecutor.run(new PassExecutor(socket, this.virtualHosts, https.getConnectTimeout(), https.getReadTimeout()));
             }
 
         } catch (Exception e) {

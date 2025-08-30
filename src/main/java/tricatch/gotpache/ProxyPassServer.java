@@ -24,32 +24,13 @@ import java.util.concurrent.ThreadPoolExecutor;
 
 public class ProxyPassServer {
 
-    private static Logger logger = LoggerFactory.getLogger(ProxyPassServer.class);
+    private static final Logger logger = LoggerFactory.getLogger(ProxyPassServer.class);
 
     private static final String CFG_FILE = "./conf/proxypass.yml";
 
     public static Config config = null;
     public static VirtualHosts virtualHosts = null;
-
-    public static final int MAX_THREAD = 100;
-
-    public static ThreadPoolExecutor requestExecutor = (ThreadPoolExecutor) Executors.newFixedThreadPool(MAX_THREAD);
     public static ThreadPoolExecutor serverExecutor = (ThreadPoolExecutor) Executors.newCachedThreadPool();
-
-    public static void requestExecute( Runnable runnable ){
-
-        int active = requestExecutor.getActiveCount();
-
-        if( active>=MAX_THREAD ){
-            logger.warn( "No more thread - MAX={}", active);
-        }
-
-        requestExecutor.execute( runnable );
-    }
-
-    public static int requestActive(){
-        return requestExecutor.getActiveCount();
-    }
 
     public static void main(String[] args) {
 
