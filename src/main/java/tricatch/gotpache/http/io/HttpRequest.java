@@ -12,7 +12,7 @@ public class HttpRequest {
     private final String host;
     private final String connection;
     private final Integer contentLength;
-    private final BodyStream bodyStream;
+    private final HttpStream httpStream;
     private final HeaderLines headers;
     
     /**
@@ -23,17 +23,17 @@ public class HttpRequest {
      * @param host request host
      * @param connection connection header value
      * @param contentLength content length value
-     * @param bodyStream body stream type
+     * @param httpStream body stream type
      * @param headers request headers
      */
-    public HttpRequest(String method, String path, String version, String host, String connection, Integer contentLength, BodyStream bodyStream, HeaderLines headers) {
+    public HttpRequest(String method, String path, String version, String host, String connection, Integer contentLength, HttpStream httpStream, HeaderLines headers) {
         this.method = method;
         this.path = path;
         this.version = version;
         this.host = host;
         this.connection = connection;
         this.contentLength = contentLength;
-        this.bodyStream = bodyStream;
+        this.httpStream = httpStream;
         this.headers = headers;
     }
     
@@ -89,8 +89,8 @@ public class HttpRequest {
      * Get body stream type
      * @return body stream type
      */
-    public BodyStream getBodyStream() {
-        return bodyStream;
+    public HttpStream getBodyStream() {
+        return httpStream;
     }
     
     /**
@@ -106,11 +106,11 @@ public class HttpRequest {
      * @return true if request has body
      */
     public boolean hasBody() {
-        if (bodyStream == BodyStream.NONE || bodyStream == BodyStream.NULL) {
+        if (httpStream == HttpStream.NONE || httpStream == HttpStream.NULL) {
             return false;
         }
         // Content-Length: 0 means no body even if bodyStream is CONTENT_LENGTH
-        if (bodyStream == BodyStream.CONTENT_LENGTH && contentLength != null && contentLength == 0) {
+        if (httpStream == HttpStream.CONTENT_LENGTH && contentLength != null && contentLength == 0) {
             return false;
         }
         return true;
@@ -123,6 +123,6 @@ public class HttpRequest {
     @Override
     public String toString() {
         return String.format("HttpRequest{method='%s', path='%s', version='%s', host='%s', connection='%s', contentLength=%s, bodyStream=%s}", 
-                           method, path, version, host, connection, contentLength, bodyStream);
+                           method, path, version, host, connection, contentLength, httpStream);
     }
 }

@@ -4,7 +4,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import tricatch.gotpache.http.HTTP;
-import tricatch.gotpache.http.io.BodyStream;
+import tricatch.gotpache.http.io.HttpStream;
 import tricatch.gotpache.http.io.HttpRequest;
 import tricatch.gotpache.http.io.HttpResponse;
 import tricatch.gotpache.http.io.HttpStreamReader;
@@ -26,9 +26,10 @@ public class RelayContentLength {
      * @param response HTTP response
      * @param in Input stream reader
      * @param out Output stream writer
+     * @return HttpStream.Connection indicating whether connection should be closed
      * @throws IOException when I/O error occurs
      */
-    public static void relay(String rid, BodyStream.Flow flow, HttpResponse response, HttpStreamReader in, HttpStreamWriter out) throws IOException {
+    public static HttpStream.Connection relay(String rid, HttpStream.Flow flow, HttpResponse response, HttpStreamReader in, HttpStreamWriter out) throws IOException {
         Integer contentLength = response.getContentLength();
         if (contentLength == null || contentLength <= 0) {
             if (logger.isDebugEnabled()) {
@@ -37,7 +38,7 @@ public class RelayContentLength {
                         , flow
                 );
             }
-            return;
+            return HttpStream.Connection.KEEP_ALIVE;
         }
         
         if (logger.isDebugEnabled()) {
@@ -86,6 +87,8 @@ public class RelayContentLength {
                     , flow
             );
         }
+        
+        return HttpStream.Connection.KEEP_ALIVE;
     }
     
     /**
@@ -95,9 +98,10 @@ public class RelayContentLength {
      * @param request HTTP request
      * @param in Input stream reader
      * @param out Output stream writer
+     * @return HttpStream.Connection indicating whether connection should be closed
      * @throws IOException when I/O error occurs
      */
-    public static void relay(String rid, BodyStream.Flow flow, HttpRequest request, HttpStreamReader in, HttpStreamWriter out) throws IOException {
+    public static HttpStream.Connection relay(String rid, HttpStream.Flow flow, HttpRequest request, HttpStreamReader in, HttpStreamWriter out) throws IOException {
         Integer contentLength = request.getContentLength();
         if (contentLength == null || contentLength <= 0) {
             if (logger.isDebugEnabled()) {
@@ -106,7 +110,7 @@ public class RelayContentLength {
                         , flow
                 );
             }
-            return;
+            return HttpStream.Connection.KEEP_ALIVE;
         }
         
         if (logger.isDebugEnabled()) {
@@ -155,5 +159,7 @@ public class RelayContentLength {
                     , flow
             );
         }
+        
+        return HttpStream.Connection.KEEP_ALIVE;
     }
 }

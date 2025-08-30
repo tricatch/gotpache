@@ -40,7 +40,7 @@ public class PassResponseExecutor implements Runnable {
                 if (logger.isDebugEnabled()) {
                     logger.debug("{}, {}, Wait - unpark"
                             , rid
-                            , BodyStream.Flow.RES
+                            , HttpStream.Flow.RES
                     );
                 }
                 LockSupport.park();
@@ -60,12 +60,12 @@ public class PassResponseExecutor implements Runnable {
                 if (logger.isDebugEnabled()) {
                     logger.debug("{}, {}, Response Headers\n{}"
                             , rid
-                            , BodyStream.Flow.RES
+                            , HttpStream.Flow.RES
                             , responseHeaders
                     );
                     logger.debug("{}, {}, Response: {} {} {} (Body: {}, Connection: {}, ContentLength: {})"
                             , rid
-                            , BodyStream.Flow.RES
+                            , HttpStream.Flow.RES
                             , response.getVersion()
                             , response.getStatusCode()
                             , response.getStatusMessage()
@@ -79,7 +79,10 @@ public class PassResponseExecutor implements Runnable {
                 clientOut.writeHeaders(responseHeaders);
 
                 // Relay response body to client
-                RelayBody.relayResponseBody(rid, BodyStream.Flow.RES, response, serverIn, clientOut);
+                HttpStream.Connection connection = RelayBody.relayResponseBody(rid, HttpStream.Flow.RES, response, serverIn, clientOut);
+                if (connection == HttpStream.Connection.CLOSE) {
+                    passRequestExecutor.setStop(true);
+                }
 
                 if( passRequestExecutor.isStop()
                     || "Close".equalsIgnoreCase(response.getConnection())

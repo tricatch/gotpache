@@ -5,7 +5,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import tricatch.gotpache.http.HTTP;
-import tricatch.gotpache.http.io.BodyStream;
+import tricatch.gotpache.http.io.HttpStream;
 import tricatch.gotpache.http.io.HeaderLines;
 import tricatch.gotpache.http.io.HttpRequest;
 import tricatch.gotpache.http.io.HttpStreamReader;
@@ -100,12 +100,12 @@ public class PassRequestExecutor implements Runnable {
                 if (logger.isDebugEnabled()) {
                     logger.debug("{}, {}, Request Headers\n{}"
                             , rid
-                            , BodyStream.Flow.REQ
+                            , HttpStream.Flow.REQ
                             , requestHeaders
                     );
                     logger.debug("{}, {}, Request: {} {} {} (Host: {}, Body: {}, Connection: {}, ContentLength: {})"
                             , rid
-                            , BodyStream.Flow.REQ
+                            , HttpStream.Flow.REQ
                             , httpRequest.getMethod()
                             , httpRequest.getPath()
                             , httpRequest.getVersion()
@@ -130,14 +130,15 @@ public class PassRequestExecutor implements Runnable {
                 serverOut.writeHeaders(requestHeaders);
 
                 // Relay request body to server if exists
-                if (httpRequest.getBodyStream() != BodyStream.NONE && httpRequest.getBodyStream() != BodyStream.NULL) {
-                    RelayBody.relayResponseBody(rid, BodyStream.Flow.REQ, httpRequest, clientIn, serverOut);
+                HttpStream.Connection connection = RelayBody.relayRequestBody(rid, HttpStream.Flow.REQ, httpRequest, clientIn, serverOut);
+                if (connection == HttpStream.Connection.CLOSE) {
+                    this.stop = true;
                 }
 
                 if (logger.isDebugEnabled()) {
                     logger.debug("{}, {}, Wait - unpark"
                             , rid
-                            , BodyStream.Flow.REQ
+                            , HttpStream.Flow.REQ
                     );
                 }
 
@@ -147,7 +148,7 @@ public class PassRequestExecutor implements Runnable {
                 if (logger.isDebugEnabled()) {
                     logger.debug("{}, {}, stop={}"
                             , rid
-                            , BodyStream.Flow.REQ
+                            , HttpStream.Flow.REQ
                             , this.stop
                     );
                 }
@@ -196,7 +197,7 @@ public class PassRequestExecutor implements Runnable {
         if( logger.isDebugEnabled() ){
             logger.debug( "{}, {}, Create Socket, vhost={}, uri={}"
                     , rid
-                    , BodyStream.Flow.REQ
+                    , HttpStream.Flow.REQ
                     , vhost
                     , uri
             );
@@ -215,7 +216,7 @@ public class PassRequestExecutor implements Runnable {
                 if (logger.isDebugEnabled()) {
                     logger.debug("{}, {}, Reserved path - {}, {}, {}, {}"
                             , rid
-                            , BodyStream.Flow.REQ
+                            , HttpStream.Flow.REQ
                             , vhost
                             , vu.getPath()
                             , vu.getTarget()
@@ -235,7 +236,7 @@ public class PassRequestExecutor implements Runnable {
             if( logger.isDebugEnabled() ){
                 logger.debug("{}, {}, Create HTTPS {}:{} / {}"
                         , rid
-                        , BodyStream.Flow.REQ
+                        , HttpStream.Flow.REQ
                         , target.getHost()
                         , port
                         , vhost
@@ -246,7 +247,7 @@ public class PassRequestExecutor implements Runnable {
             int port = target.getPort() <= 0 ? 80 : target.getPort();
             if( logger.isDebugEnabled() ) logger.debug("{}, {}, Create HTTP {}:{} / {}"
                     , rid
-                    , BodyStream.Flow.REQ
+                    , HttpStream.Flow.REQ
                     , target.getHost()
                     , port
                     , vhost

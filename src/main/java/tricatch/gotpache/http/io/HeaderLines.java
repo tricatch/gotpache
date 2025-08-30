@@ -455,21 +455,21 @@ public class HeaderLines extends ArrayList<ByteBuffer> {
         Integer contentLength = getHeaderValueAsInt(HTTP.HEADER.CONTENT_LENGTH);
         
         // Determine body stream type
-        BodyStream bodyStream = determineBodyStreamType();
+        HttpStream httpStream = determineBodyStreamType();
         
-        return new HttpRequest(method, path, version, host, connection, contentLength, bodyStream, this);
+        return new HttpRequest(method, path, version, host, connection, contentLength, httpStream, this);
     }
     
     /**
      * Determine body stream type based on headers
      * @return BodyStream type
      */
-    private BodyStream determineBodyStreamType() {
+    private HttpStream determineBodyStreamType() {
         // Check for Transfer-Encoding: chunked
         if (hasHeader(HTTP.HEADER.TRANSFER_ENCODING)) {
             String transferEncoding = getHeaderValueAsString(HTTP.HEADER.TRANSFER_ENCODING);
             if (transferEncoding != null && transferEncoding.toLowerCase().contains("chunked")) {
-                return BodyStream.CHUNKED;
+                return HttpStream.CHUNKED;
             }
         }
         
@@ -477,7 +477,7 @@ public class HeaderLines extends ArrayList<ByteBuffer> {
         if (hasHeader(HTTP.HEADER.CONTENT_LENGTH)) {
             Integer contentLength = getHeaderValueAsInt(HTTP.HEADER.CONTENT_LENGTH);
             if (contentLength != null && contentLength >= 0) {
-                return BodyStream.CONTENT_LENGTH;
+                return HttpStream.CONTENT_LENGTH;
             }
         }
         
@@ -499,13 +499,13 @@ public class HeaderLines extends ArrayList<ByteBuffer> {
             if (firstSpaceIndex > 0) {
                 String method = new String(requestBytes, 0, firstSpaceIndex);
                 if ("GET".equals(method) || "HEAD".equals(method) || "DELETE".equals(method)) {
-                    return BodyStream.NONE;
+                    return HttpStream.NONE;
                 }
             }
         }
         
         // Default to no-body
-        return BodyStream.NONE;
+        return HttpStream.NONE;
     }
     
     /**
@@ -571,9 +571,9 @@ public class HeaderLines extends ArrayList<ByteBuffer> {
         Integer contentLength = getHeaderValueAsInt(HTTP.HEADER.CONTENT_LENGTH);
         
         // Determine body stream type
-        BodyStream bodyStream = determineResponseBodyStreamType(statusCode);
+        HttpStream httpStream = determineResponseBodyStreamType(statusCode);
         
-        return new HttpResponse(version, statusCode, statusMessage, connection, contentLength, bodyStream, this);
+        return new HttpResponse(version, statusCode, statusMessage, connection, contentLength, httpStream, this);
     }
     
     /**
@@ -581,17 +581,17 @@ public class HeaderLines extends ArrayList<ByteBuffer> {
      * @param statusCode HTTP status code
      * @return BodyStream type
      */
-    private BodyStream determineResponseBodyStreamType(int statusCode) {
+    private HttpStream determineResponseBodyStreamType(int statusCode) {
         // Some status codes never have a body
         if (statusCode == 204 || statusCode == 304) {
-            return BodyStream.NONE;
+            return HttpStream.NONE;
         }
         
         // Check for Transfer-Encoding: chunked
         if (hasHeader(HTTP.HEADER.TRANSFER_ENCODING)) {
             String transferEncoding = getHeaderValueAsString(HTTP.HEADER.TRANSFER_ENCODING);
             if (transferEncoding != null && transferEncoding.toLowerCase().contains("chunked")) {
-                return BodyStream.CHUNKED;
+                return HttpStream.CHUNKED;
             }
         }
         
@@ -599,7 +599,7 @@ public class HeaderLines extends ArrayList<ByteBuffer> {
         if (hasHeader(HTTP.HEADER.CONTENT_LENGTH)) {
             Integer contentLength = getHeaderValueAsInt(HTTP.HEADER.CONTENT_LENGTH);
             if (contentLength != null && contentLength >= 0) {
-                return BodyStream.CONTENT_LENGTH;
+                return HttpStream.CONTENT_LENGTH;
             }
         }
         
@@ -607,6 +607,6 @@ public class HeaderLines extends ArrayList<ByteBuffer> {
         // This is handled at the application level, not here
         
         // Default to no-body for responses without explicit content length or transfer encoding
-        return BodyStream.NONE;
+        return HttpStream.NONE;
     }
 }

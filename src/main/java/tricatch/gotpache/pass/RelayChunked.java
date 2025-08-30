@@ -4,7 +4,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import tricatch.gotpache.http.HTTP;
-import tricatch.gotpache.http.io.BodyStream;
+import tricatch.gotpache.http.io.HttpStream;
 import tricatch.gotpache.http.io.ByteBuffer;
 import tricatch.gotpache.http.io.HttpStreamReader;
 import tricatch.gotpache.http.io.HttpStreamWriter;
@@ -24,9 +24,10 @@ public class RelayChunked {
      * @param flow Body stream flow direction (REQ/RES)
      * @param in Input stream reader
      * @param out Output stream writer
+     * @return HttpStream.Connection indicating whether connection should be closed
      * @throws IOException when I/O error occurs
      */
-    public static void relay(String rid, BodyStream.Flow flow, HttpStreamReader in, HttpStreamWriter out) throws IOException {
+    public static HttpStream.Connection relay(String rid, HttpStream.Flow flow, HttpStreamReader in, HttpStreamWriter out) throws IOException {
         if (logger.isDebugEnabled()) {
             logger.debug("{}, {}, Relaying chunked body"
                     , rid
@@ -141,5 +142,7 @@ public class RelayChunked {
                     , flow
             );
         }
+        
+        return HttpStream.Connection.KEEP_ALIVE;
     }
 }

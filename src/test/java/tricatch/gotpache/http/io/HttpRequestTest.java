@@ -28,7 +28,7 @@ class HttpRequestTest {
         assertEquals("example.com", request.getHost());
         assertNull(request.getConnection()); // No Connection header in this test
         assertNull(request.getContentLength()); // No Content-Length header in this test
-        assertEquals(BodyStream.NONE, request.getBodyStream());
+        assertEquals(HttpStream.NONE, request.getBodyStream());
         assertFalse(request.hasBody());
     }
     
@@ -53,7 +53,7 @@ class HttpRequestTest {
         assertEquals("example.com", request.getHost());
         assertNull(request.getConnection()); // No Connection header in this test
         assertEquals(Integer.valueOf(1024), request.getContentLength());
-        assertEquals(BodyStream.CONTENT_LENGTH, request.getBodyStream());
+        assertEquals(HttpStream.CONTENT_LENGTH, request.getBodyStream());
         assertTrue(request.hasBody());
     }
     
@@ -78,7 +78,7 @@ class HttpRequestTest {
         assertEquals("example.com", request.getHost());
         assertNull(request.getConnection()); // No Connection header in this test
         assertNull(request.getContentLength()); // Chunked encoding doesn't use Content-Length
-        assertEquals(BodyStream.CHUNKED, request.getBodyStream());
+        assertEquals(HttpStream.CHUNKED, request.getBodyStream());
         assertTrue(request.hasBody());
     }
     
@@ -101,7 +101,7 @@ class HttpRequestTest {
         assertEquals("example.com", request.getHost());
         assertNull(request.getConnection()); // No Connection header in this test
         assertNull(request.getContentLength()); // No Content-Length header in this test
-        assertEquals(BodyStream.NONE, request.getBodyStream());
+        assertEquals(HttpStream.NONE, request.getBodyStream());
         assertFalse(request.hasBody());
     }
     
@@ -124,7 +124,7 @@ class HttpRequestTest {
         assertEquals("example.com", request.getHost());
         assertNull(request.getConnection()); // No Connection header in this test
         assertNull(request.getContentLength()); // No Content-Length header in this test
-        assertEquals(BodyStream.NONE, request.getBodyStream());
+        assertEquals(HttpStream.NONE, request.getBodyStream());
         assertFalse(request.hasBody());
     }
     
@@ -148,7 +148,7 @@ class HttpRequestTest {
         assertEquals("example.com", request.getHost());
         assertEquals("close", request.getConnection());
         assertNull(request.getContentLength()); // No Content-Length header in this test
-        assertEquals(BodyStream.NONE, request.getBodyStream());
+        assertEquals(HttpStream.NONE, request.getBodyStream());
         assertFalse(request.hasBody());
     }
     
@@ -172,7 +172,7 @@ class HttpRequestTest {
         assertEquals("example.com", request.getHost());
         assertNull(request.getConnection()); // No Connection header in this test
         assertEquals(Integer.valueOf(0), request.getContentLength());
-        assertEquals(BodyStream.CONTENT_LENGTH, request.getBodyStream());
+        assertEquals(HttpStream.CONTENT_LENGTH, request.getBodyStream());
         assertFalse(request.hasBody()); // Content-Length: 0 means no body
     }
     
@@ -243,7 +243,7 @@ class HttpRequestTest {
         assertNull(request.getHost()); // No Host header
         assertNull(request.getConnection()); // No Connection header in this test
         assertNull(request.getContentLength()); // No Content-Length header in this test
-        assertEquals(BodyStream.NONE, request.getBodyStream());
+        assertEquals(HttpStream.NONE, request.getBodyStream());
         assertFalse(request.hasBody());
     }
     

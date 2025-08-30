@@ -11,7 +11,7 @@ public class HttpResponse {
     private final String statusMessage;
     private final String connection;
     private final Integer contentLength;
-    private final BodyStream bodyStream;
+    private final HttpStream httpStream;
     private final HeaderLines headers;
     
     /**
@@ -21,16 +21,16 @@ public class HttpResponse {
      * @param statusMessage response status message
      * @param connection connection header value
      * @param contentLength content length value
-     * @param bodyStream body stream type
+     * @param httpStream body stream type
      * @param headers response headers
      */
-    public HttpResponse(String version, int statusCode, String statusMessage, String connection, Integer contentLength, BodyStream bodyStream, HeaderLines headers) {
+    public HttpResponse(String version, int statusCode, String statusMessage, String connection, Integer contentLength, HttpStream httpStream, HeaderLines headers) {
         this.version = version;
         this.statusCode = statusCode;
         this.statusMessage = statusMessage;
         this.connection = connection;
         this.contentLength = contentLength;
-        this.bodyStream = bodyStream;
+        this.httpStream = httpStream;
         this.headers = headers;
     }
     
@@ -78,8 +78,8 @@ public class HttpResponse {
      * Get body stream type
      * @return body stream type
      */
-    public BodyStream getBodyStream() {
-        return bodyStream;
+    public HttpStream getBodyStream() {
+        return httpStream;
     }
     
     /**
@@ -95,11 +95,11 @@ public class HttpResponse {
      * @return true if response has body
      */
     public boolean hasBody() {
-        if (bodyStream == BodyStream.NONE || bodyStream == BodyStream.NULL) {
+        if (httpStream == HttpStream.NONE || httpStream == HttpStream.NULL) {
             return false;
         }
         // Content-Length: 0 means no body even if bodyStream is CONTENT_LENGTH
-        if (bodyStream == BodyStream.CONTENT_LENGTH && contentLength != null && contentLength == 0) {
+        if (httpStream == HttpStream.CONTENT_LENGTH && contentLength != null && contentLength == 0) {
             return false;
         }
         return true;
@@ -153,6 +153,6 @@ public class HttpResponse {
     @Override
     public String toString() {
         return String.format("HttpResponse{version='%s', statusCode=%d, statusMessage='%s', connection='%s', contentLength=%s, bodyStream=%s}", 
-                           version, statusCode, statusMessage, connection, contentLength, bodyStream);
+                           version, statusCode, statusMessage, connection, contentLength, httpStream);
     }
 }

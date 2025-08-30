@@ -28,7 +28,7 @@ class HttpResponseTest {
         assertEquals("OK", response.getStatusMessage());
         assertNull(response.getConnection()); // No Connection header in this test
         assertEquals(Integer.valueOf(1024), response.getContentLength());
-        assertEquals(BodyStream.CONTENT_LENGTH, response.getBodyStream());
+        assertEquals(HttpStream.CONTENT_LENGTH, response.getBodyStream());
         assertTrue(response.hasBody());
         assertTrue(response.isSuccessful());
         assertFalse(response.isRedirection());
@@ -56,7 +56,7 @@ class HttpResponseTest {
         assertEquals("Not Found", response.getStatusMessage());
         assertNull(response.getConnection()); // No Connection header in this test
         assertEquals(Integer.valueOf(0), response.getContentLength());
-        assertEquals(BodyStream.CONTENT_LENGTH, response.getBodyStream());
+        assertEquals(HttpStream.CONTENT_LENGTH, response.getBodyStream());
         assertFalse(response.hasBody()); // Content-Length: 0 means no body
         assertFalse(response.isSuccessful());
         assertFalse(response.isRedirection());
@@ -84,7 +84,7 @@ class HttpResponseTest {
         assertEquals("Internal Server Error", response.getStatusMessage());
         assertNull(response.getConnection()); // No Connection header in this test
         assertEquals(Integer.valueOf(0), response.getContentLength());
-        assertEquals(BodyStream.CONTENT_LENGTH, response.getBodyStream());
+        assertEquals(HttpStream.CONTENT_LENGTH, response.getBodyStream());
         assertFalse(response.hasBody()); // Content-Length: 0 means no body
         assertFalse(response.isSuccessful());
         assertFalse(response.isRedirection());
@@ -112,7 +112,7 @@ class HttpResponseTest {
         assertEquals("No Content", response.getStatusMessage());
         assertEquals("keep-alive", response.getConnection());
         assertNull(response.getContentLength());
-        assertEquals(BodyStream.NONE, response.getBodyStream());
+        assertEquals(HttpStream.NONE, response.getBodyStream());
         assertFalse(response.hasBody());
         assertTrue(response.isSuccessful());
         assertFalse(response.shouldCloseConnection());
@@ -138,7 +138,7 @@ class HttpResponseTest {
         assertEquals("Not Modified", response.getStatusMessage());
         assertEquals("keep-alive", response.getConnection());
         assertNull(response.getContentLength());
-        assertEquals(BodyStream.NONE, response.getBodyStream());
+        assertEquals(HttpStream.NONE, response.getBodyStream());
         assertFalse(response.hasBody());
         assertFalse(response.isSuccessful()); // 304 is not successful, it's redirection
         assertTrue(response.isRedirection()); // 304 is redirection
@@ -167,7 +167,7 @@ class HttpResponseTest {
         assertEquals("OK", response.getStatusMessage());
         assertEquals("close", response.getConnection());
         assertEquals(Integer.valueOf(1024), response.getContentLength());
-        assertEquals(BodyStream.CONTENT_LENGTH, response.getBodyStream());
+        assertEquals(HttpStream.CONTENT_LENGTH, response.getBodyStream());
         assertTrue(response.hasBody());
         assertTrue(response.isSuccessful());
         assertTrue(response.shouldCloseConnection());
@@ -192,7 +192,7 @@ class HttpResponseTest {
         assertEquals("I'm a teapot", response.getStatusMessage());
         assertNull(response.getConnection()); // No Connection header in this test
         assertEquals(Integer.valueOf(0), response.getContentLength());
-        assertEquals(BodyStream.CONTENT_LENGTH, response.getBodyStream());
+        assertEquals(HttpStream.CONTENT_LENGTH, response.getBodyStream());
         assertFalse(response.hasBody()); // Content-Length: 0 means no body
         assertFalse(response.isSuccessful());
         assertFalse(response.isRedirection());
@@ -267,7 +267,7 @@ class HttpResponseTest {
         assertEquals("OK", response.getStatusMessage());
         assertNull(response.getConnection()); // No Connection header in this test
         assertNull(response.getContentLength()); // No Content-Length header in this test
-        assertEquals(BodyStream.NONE, response.getBodyStream());
+        assertEquals(HttpStream.NONE, response.getBodyStream());
         assertFalse(response.hasBody());
         assertTrue(response.isSuccessful());
         assertFalse(response.isRedirection());
@@ -295,7 +295,7 @@ class HttpResponseTest {
         assertEquals("OK", response.getStatusMessage());
         assertNull(response.getConnection()); // No Connection header in this test
         assertNull(response.getContentLength()); // Chunked encoding doesn't use Content-Length
-        assertEquals(BodyStream.CHUNKED, response.getBodyStream());
+        assertEquals(HttpStream.CHUNKED, response.getBodyStream());
         assertTrue(response.hasBody());
         assertTrue(response.isSuccessful());
         assertFalse(response.isRedirection());

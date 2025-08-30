@@ -3,7 +3,7 @@ package tricatch.gotpache.pass;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import tricatch.gotpache.http.io.BodyStream;
+import tricatch.gotpache.http.io.HttpStream;
 import tricatch.gotpache.http.io.HttpStreamReader;
 import tricatch.gotpache.http.io.HttpStreamWriter;
 import java.io.IOException;
@@ -21,9 +21,10 @@ public class RelayWebSocket {
      * @param flow Body stream flow direction (REQ/RES)
      * @param in Input stream reader
      * @param out Output stream writer
+     * @return HttpStream.Connection indicating whether connection should be closed
      * @throws IOException when I/O error occurs
      */
-    public static void relay(String rid, BodyStream.Flow flow, HttpStreamReader in, HttpStreamWriter out) throws IOException {
+    public static HttpStream.Connection relay(String rid, HttpStream.Flow flow, HttpStreamReader in, HttpStreamWriter out) throws IOException {
         if (logger.isDebugEnabled()) {
             logger.debug("{}, {}, Relaying WebSocket frames"
                     , rid
@@ -46,6 +47,9 @@ public class RelayWebSocket {
                     , flow
             );
         }
+        
+        // WebSocket relay completed, connection should be closed
+        return HttpStream.Connection.CLOSE;
     }
 
     public static WebSocketFrame readFrame(HttpStreamReader in) throws IOException {
@@ -108,7 +112,7 @@ public class RelayWebSocket {
         out.flush();
     }
 
-    private static void logFrame(String rid, BodyStream.Flow flow, String direction, WebSocketFrame frame) {
+    private static void logFrame(String rid, HttpStream.Flow flow, String direction, WebSocketFrame frame) {
         if (!logger.isDebugEnabled()) return;
 
         int opcode = frame.getOpcode();
