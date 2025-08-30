@@ -1,5 +1,7 @@
 package tricatch.gotpache.http.io;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import tricatch.gotpache.exception.MaxBufferExceedException;
 import tricatch.gotpache.http.HTTP;
 
@@ -11,6 +13,8 @@ import java.io.InputStream;
  * BufferedInputStream extension that provides line reading functionality
  */
 public class HttpStreamReader extends BufferedInputStream {
+
+    //private static final Logger logger = LoggerFactory.getLogger(HttpStreamReader.class);
 
     /**
      * Creates HttpStreamReader with specified buffer size
@@ -49,14 +53,14 @@ public class HttpStreamReader extends BufferedInputStream {
         while (bytesRead < max) {
             ch = read();
             
-                    if (ch == -1) {
-            // End of stream reached
-            if (bytesRead > 0) {
-                buffer.setLength(bytesRead);
-                return bytesRead;
+            if (ch == -1) {
+                // End of stream reached
+                if (bytesRead > 0) {
+                    buffer.setLength(bytesRead);
+                    return bytesRead;
+                }
+                return -1;
             }
-            return -1;
-        }
 
             if (ch == '\r') {
                 foundCR = true;
@@ -115,12 +119,12 @@ public class HttpStreamReader extends BufferedInputStream {
         while (true) {
             ByteBuffer lineBuffer = new ByteBuffer(HTTP.INIT_HEADER_LENGTH);
             int bytesRead = readLine(lineBuffer, maxLineLength);
-            
+
             if (bytesRead == -1) {
                 // End of stream reached
                 return totalBytesRead > 0 ? totalBytesRead : -1;
             }
-            
+
             totalBytesRead += bytesRead;
             totalBytesRead += 2; // Add CRLF bytes
             

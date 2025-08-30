@@ -36,6 +36,7 @@ public class RelayChunked {
         }
 
         ByteBuffer chunkSizeBuffer = new ByteBuffer(HTTP.CHUNK_SIZE_LINE_LENGTH);
+        ByteBuffer chunkTrailerBuffer = new ByteBuffer(HTTP.CHUNK_SIZE_LINE_LENGTH);
         byte[] chunkBodyBuffer = new byte[HTTP.BODY_BUFFER_SIZE];
         
         while (true) {
@@ -81,6 +82,27 @@ public class RelayChunked {
             out.write(HTTP.CRLF);
             
             if (chunkSize == 0) {
+
+                for(;;){
+                    bytesRead = in.readLine(chunkTrailerBuffer, HTTP.CHUNK_SIZE_LINE_LENGTH);
+                    if( bytesRead < 0 ){
+                        logger.warn("{}, {}, Unexpected end of stream while reading chunk trailer"
+                                , rid
+                                , flow
+                        );
+                        break;
+                    }
+
+                    if( bytesRead>0 ){
+                        out.write(chunkTrailerBuffer.getBuffer(), 0, chunkTrailerBuffer.getLength());
+                    }
+
+                    out.write(HTTP.CRLF);
+                    out.flush();
+
+                    if( bytesRead == 0 ) break;
+                }
+
                 // End of chunked body - read and relay trailer headers
                 if (logger.isDebugEnabled()) {
                     logger.debug("{}, {}, End of chunked body (chunk size 0) - reading trailer headers"
@@ -89,8 +111,6 @@ public class RelayChunked {
                     );
                 }
                 
-                out.write(HTTP.CRLF);
-                out.flush();
                 break;
             }
             

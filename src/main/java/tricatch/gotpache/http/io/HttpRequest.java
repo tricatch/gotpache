@@ -89,7 +89,7 @@ public class HttpRequest {
      * Get body stream type
      * @return body stream type
      */
-    public HttpStream getBodyStream() {
+    public HttpStream getHttpStream() {
         return httpStream;
     }
     

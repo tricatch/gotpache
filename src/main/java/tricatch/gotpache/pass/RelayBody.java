@@ -84,7 +84,7 @@ public class RelayBody {
      * @throws IOException when I/O error occurs
      */
     public static HttpStream.Connection relayRequestBody(String rid, HttpStream.Flow flow, HttpRequest request, HttpStreamReader in, HttpStreamWriter out) throws IOException {
-        HttpStream httpStream = request.getBodyStream();
+        HttpStream httpStream = request.getHttpStream();
         
         if (logger.isDebugEnabled()) {
             logger.debug("{}, {}, Relaying body with type: {}"

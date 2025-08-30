@@ -34,11 +34,21 @@ public class RelayWebSocket {
         
         while (true) {
             WebSocketFrame frame = readFrame(in);
-            if (frame == null) break;
+            if (frame == null) {
+                if (logger.isDebugEnabled()) {
+                    logger.debug("{}, {}, WebSocket frame read returned null - ending relay", rid, flow);
+                }
+                break;
+            }
             logFrame(rid, flow, "READ", frame);
             writeFrame(out, frame);
             logFrame(rid, flow, "WRITE", frame);
-            if (frame.getOpcode() == 0x8) break; // close frame
+            if (frame.getOpcode() == 0x8) {
+                if (logger.isDebugEnabled()) {
+                    logger.debug("{}, {}, WebSocket close frame received - ending relay", rid, flow);
+                }
+                break; // close frame
+            }
         }
         
         if (logger.isDebugEnabled()) {
@@ -54,11 +64,21 @@ public class RelayWebSocket {
 
     public static WebSocketFrame readFrame(HttpStreamReader in) throws IOException {
         int b = in.read();
-        if (b == -1) return null;
+        if (b == -1) {
+            if (logger.isDebugEnabled()) {
+                logger.debug("WebSocket readFrame: End of stream (first byte)");
+            }
+            return null;
+        }
         int finAndOpcode = b;
 
         b = in.read();
-        if (b == -1) return null;
+        if (b == -1) {
+            if (logger.isDebugEnabled()) {
+                logger.debug("WebSocket readFrame: End of stream (second byte)");
+            }
+            return null;
+        }
         int maskAndPayloadLen = b;
 
         int payloadLength = maskAndPayloadLen & 0x7F;
@@ -66,11 +86,21 @@ public class RelayWebSocket {
 
         if (payloadLength == 126) {
             extendedPayloadLengthBytes = new byte[2];
-            if (in.read(extendedPayloadLengthBytes) != 2) return null;
+            if (in.read(extendedPayloadLengthBytes) != 2) {
+                if (logger.isDebugEnabled()) {
+                    logger.debug("WebSocket readFrame: Failed to read extended payload length (126)");
+                }
+                return null;
+            }
             payloadLength = ((extendedPayloadLengthBytes[0] & 0xFF) << 8) | (extendedPayloadLengthBytes[1] & 0xFF);
         } else if (payloadLength == 127) {
             extendedPayloadLengthBytes = new byte[8];
-            if (in.read(extendedPayloadLengthBytes) != 8) return null;
+            if (in.read(extendedPayloadLengthBytes) != 8) {
+                if (logger.isDebugEnabled()) {
+                    logger.debug("WebSocket readFrame: Failed to read extended payload length (127)");
+                }
+                return null;
+            }
             long length = 0;
             for (int i = 0; i < 8; i++) {
                 length = (length << 8) | (extendedPayloadLengthBytes[i] & 0xFF);
@@ -85,16 +115,28 @@ public class RelayWebSocket {
         byte[] maskingKey = null;
         if (masked) {
             maskingKey = new byte[4];
-            if (in.read(maskingKey) != 4) return null;
+            if (in.read(maskingKey) != 4) {
+                if (logger.isDebugEnabled()) {
+                    logger.debug("WebSocket readFrame: Failed to read masking key");
+                }
+                return null;
+            }
         }
 
         byte[] payload = new byte[payloadLength];
         int readTotal = 0;
         while (readTotal < payloadLength) {
             int r = in.read(payload, readTotal, payloadLength - readTotal);
-            if (r == -1) return null;
+            if (r == -1) {
+                if (logger.isDebugEnabled()) {
+                    logger.debug("WebSocket readFrame: End of stream while reading payload (read: {}, expected: {})", readTotal, payloadLength);
+                }
+                return null;
+            }
             readTotal += r;
         }
+
+
 
         return new WebSocketFrame(finAndOpcode, maskAndPayloadLen, extendedPayloadLengthBytes, maskingKey, payload);
     }

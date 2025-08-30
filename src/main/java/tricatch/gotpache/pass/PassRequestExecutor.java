@@ -46,6 +46,7 @@ public class PassRequestExecutor implements Runnable {
     private Thread child = null;
 
     private String rid = null;
+    private int cnt = 0;
 
     public PassRequestExecutor(Socket clientSocket, VirtualHosts virtualHosts, int connectTimeout, int readTimeout){
 
@@ -81,7 +82,8 @@ public class PassRequestExecutor implements Runnable {
 
             while(true) {
 
-                this.rid = SysUtil.generateRequestId();
+                cnt++;
+                this.rid = SysUtil.generateRequestId() + "-" + cnt;
 
                 //read-req-header
                 HeaderLines requestHeaders = new HeaderLines(HTTP.INIT_HEADER_LINES);
@@ -110,7 +112,7 @@ public class PassRequestExecutor implements Runnable {
                             , httpRequest.getPath()
                             , httpRequest.getVersion()
                             , httpRequest.getHost()
-                            , httpRequest.getBodyStream()
+                            , httpRequest.getHttpStream()
                             , httpRequest.getConnection()
                             , httpRequest.getContentLength()
                     );
@@ -129,6 +131,12 @@ public class PassRequestExecutor implements Runnable {
                 //write-req-header
                 serverOut.writeHeaders(requestHeaders);
 
+                if( HttpStream.WEBSOCKET == httpRequest.getHttpStream() ){
+                    this.clientSocket.setSoTimeout(1000*60*5);
+                    this.serverSocket.setSoTimeout(1000*60*5);
+                    LockSupport.unpark(this.child);
+                }
+
                 // Relay request body to server if exists
                 HttpStream.Connection connection = RelayBody.relayRequestBody(rid, HttpStream.Flow.REQ, httpRequest, clientIn, serverOut);
                 if (connection == HttpStream.Connection.CLOSE) {
@@ -136,26 +144,20 @@ public class PassRequestExecutor implements Runnable {
                 }
 
                 if (logger.isDebugEnabled()) {
-                    logger.debug("{}, {}, Wait - unpark"
-                            , rid
-                            , HttpStream.Flow.REQ
-                    );
-                }
-
-                LockSupport.unpark(this.child);
-                LockSupport.park();
-
-                if (logger.isDebugEnabled()) {
-                    logger.debug("{}, {}, stop={}"
+                    logger.debug("{}, {}, stop={} or park"
                             , rid
                             , HttpStream.Flow.REQ
                             , this.stop
                     );
                 }
 
+                LockSupport.unpark(this.child);
+
                 if (this.stop) {
                     break;
                 }
+
+                LockSupport.park();
             }
         } catch (IOException e) {
             String errorRid = rid != null ? rid : "unknown";
