@@ -38,7 +38,3 @@ virtual:
   - domain: webtest.kr
     location:
       - { host: http://127.0.0.1:8989, path: [ /** ] }
-
-  - domain: login.11st.co.kr
-    location:
-      - { host: https://220.103.231.86:443, path: [ /** ] }
