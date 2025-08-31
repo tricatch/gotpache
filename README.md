@@ -13,6 +13,7 @@ apache/nginx의 복잡한 기능을 가지고 있지 않지만, ProxyPass와 유
 
 #### v0.5.0
 * HTTP 1.1 지원 
+* JDK 21 이상 
 
 #### v0.4.0
 * Websocket 지원
