@@ -35,6 +35,10 @@ virtual:
     location:
       - { host: http://127.0.0.1:8899, path: [ /** ], header: [ "Content-Security-Policy: frame-ancestors 'self' https://foo.kr", "--ETag" ] }
 
+  - domain: webtest.kr
+    location:
+      - { host: http://127.0.0.1:8989, path: [ /** ] }
+
   - domain: login.11st.co.kr
     location:
       - { host: https://220.103.231.86:443, path: [ /** ] }

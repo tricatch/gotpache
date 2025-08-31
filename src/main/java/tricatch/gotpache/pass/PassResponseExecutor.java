@@ -44,6 +44,9 @@ public class PassResponseExecutor implements Runnable {
                     );
                 }
                 LockSupport.park();
+                if( this.passRequestExecutor.isStop() ){
+                    break;
+                }
 
                 //read-res-header
                 bytesRead = serverIn.readHeaders(responseHeaders, HTTP.MAX_HEADER_LENGTH);

@@ -66,7 +66,7 @@ public class ConsoleExecutor implements Runnable {
             clientOut.flush();
 
             //body
-            clientOut.write(res.getResponse());
+            clientOut.write(res.getBody());
             clientOut.flush();
 
         } catch (IOException e) {

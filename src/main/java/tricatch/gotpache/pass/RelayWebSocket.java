@@ -33,6 +33,7 @@ public class RelayWebSocket {
         }
         
         while (true) {
+
             WebSocketFrame frame = readFrame(in);
             if (frame == null) {
                 if (logger.isDebugEnabled()) {
@@ -40,9 +41,11 @@ public class RelayWebSocket {
                 }
                 break;
             }
+
             logFrame(rid, flow, "READ", frame);
             writeFrame(out, frame);
             logFrame(rid, flow, "WRITE", frame);
+
             if (frame.getOpcode() == 0x8) {
                 if (logger.isDebugEnabled()) {
                     logger.debug("{}, {}, WebSocket close frame received - ending relay", rid, flow);
@@ -63,13 +66,16 @@ public class RelayWebSocket {
     }
 
     public static WebSocketFrame readFrame(HttpStreamReader in) throws IOException {
+
         int b = in.read();
+
         if (b == -1) {
             if (logger.isDebugEnabled()) {
                 logger.debug("WebSocket readFrame: End of stream (first byte)");
             }
             return null;
         }
+
         int finAndOpcode = b;
 
         b = in.read();
@@ -79,6 +85,7 @@ public class RelayWebSocket {
             }
             return null;
         }
+
         int maskAndPayloadLen = b;
 
         int payloadLength = maskAndPayloadLen & 0x7F;
@@ -113,6 +120,7 @@ public class RelayWebSocket {
 
         boolean masked = (maskAndPayloadLen & 0x80) != 0;
         byte[] maskingKey = null;
+
         if (masked) {
             maskingKey = new byte[4];
             if (in.read(maskingKey) != 4) {
@@ -142,19 +150,23 @@ public class RelayWebSocket {
     }
 
     public static void writeFrame(HttpStreamWriter out, WebSocketFrame frame) throws IOException {
+
         out.write(frame.getFinAndOpcode());
         out.write(frame.getMaskAndPayloadLen());
+
         if (frame.getExtendedPayloadLengthBytes() != null) {
             out.write(frame.getExtendedPayloadLengthBytes());
         }
         if (frame.getMaskingKey() != null) {
             out.write(frame.getMaskingKey());
         }
+
         out.write(frame.getPayload());
         out.flush();
     }
 
     private static void logFrame(String rid, HttpStream.Flow flow, String direction, WebSocketFrame frame) {
+
         if (!logger.isDebugEnabled()) return;
 
         int opcode = frame.getOpcode();
@@ -172,13 +184,18 @@ public class RelayWebSocket {
     }
 
     private static String toHexSummary(byte[] data) {
+
         int limit = Math.min(data.length, 16);
+
         StringBuilder sb = new StringBuilder();
+
         for (int i = 0; i < limit; i++) {
             sb.append(String.format("%02X", data[i]));
             if (i < limit - 1) sb.append(" ");
         }
+
         if (data.length > 16) sb.append(" ...");
+
         return sb.toString();
     }
 
