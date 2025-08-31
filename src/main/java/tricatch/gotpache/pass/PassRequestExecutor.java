@@ -18,6 +18,7 @@ import tricatch.gotpache.util.SysUtil;
 
 import java.io.IOException;
 import java.net.Socket;
+import java.net.SocketTimeoutException;
 import java.net.URL;
 import java.util.List;
 import java.util.concurrent.locks.LockSupport;
@@ -45,8 +46,9 @@ public class PassRequestExecutor implements Runnable {
     private Thread thisThread = null;
     private Thread child = null;
 
-    private String rid = null;
-    private int cnt = 0;
+    private final String uid = SysUtil.generateRequestId();
+    private String rid = uid;
+    private int reqCounter = 0;
 
     public PassRequestExecutor(Socket clientSocket, VirtualHosts virtualHosts, int connectTimeout, int readTimeout){
 
@@ -64,6 +66,9 @@ public class PassRequestExecutor implements Runnable {
         return this.stop;
     }
 
+    public String getUid(){
+        return this.uid;
+    }
     public String getRid(){
         return this.rid;
     }
@@ -76,14 +81,19 @@ public class PassRequestExecutor implements Runnable {
     public void run() {
 
         try {
+
+            if( logger.isDebugEnabled() ){
+                logger.debug( "{}, vtStart", this.uid );
+            }
+
             thisThread = Thread.currentThread();
             clientIn = new HttpStreamReader(clientSocket.getInputStream(), HTTP.BODY_BUFFER_SIZE);
             clientOut = new HttpStreamWriter(clientSocket.getOutputStream());
 
-            while(true) {
+            while (true) {
 
-                cnt++;
-                this.rid = SysUtil.generateRequestId() + "-" + cnt;
+                reqCounter++;
+                this.rid = this.uid + "-" + reqCounter;
 
                 //read-req-header
                 HeaderLines requestHeaders = new HeaderLines(HTTP.INIT_HEADER_LINES);
@@ -123,18 +133,19 @@ public class PassRequestExecutor implements Runnable {
                     serverSocket = createServerSocket(rid, httpRequest.getHost(), httpRequest.getPath());
                     serverIn = new HttpStreamReader(serverSocket.getInputStream(), HTTP.BODY_BUFFER_SIZE);
                     serverOut = new HttpStreamWriter(serverSocket.getOutputStream());
-                    child = VThreadExecutor.run(new PassResponseExecutor(this, serverIn, clientOut)
+
+                    child =  VThreadExecutor.run(
+                            new PassResponseExecutor(this, serverIn, clientOut)
                             , Thread.currentThread().getName() + "x"
-                    );
+                        );
                 }
 
                 //write-req-header
                 serverOut.writeHeaders(requestHeaders);
 
-                if( HttpStream.WEBSOCKET == httpRequest.getHttpStream() ){
-                    this.clientSocket.setSoTimeout(1000*60*5);
-                    this.serverSocket.setSoTimeout(1000*60*5);
-                    LockSupport.unpark(this.child);
+                if (HttpStream.WEBSOCKET == httpRequest.getHttpStream()) {
+                    this.clientSocket.setSoTimeout(1000 * 60 * 5);
+                    this.serverSocket.setSoTimeout(1000 * 60 * 5);
                 }
 
                 // Relay request body to server if exists
@@ -151,47 +162,45 @@ public class PassRequestExecutor implements Runnable {
                     );
                 }
 
-                LockSupport.unpark(this.child);
-
                 if (this.stop) {
                     break;
                 }
 
                 LockSupport.park();
             }
+        } catch (SocketTimeoutException e){
+            logger.error( uid + ", " + e.getMessage());
         } catch (IOException e) {
-            String errorRid = rid != null ? rid : "unknown";
-            logger.error( errorRid + ", " + e.getMessage(), e);
+            logger.error( uid + ", " + e.getMessage(), e);
         } finally {
             this.stop = true;
-            if( this.child!=null) LockSupport.unpark(this.child);
-            closeAll(rid);
+            closeAll();
         }
 
 
     }
 
-    private void closeAll(String rid){
+    private void closeAll(){
 
         if( logger.isDebugEnabled() ){
-            logger.debug( "{}, Close", rid );
+            logger.debug( "{}, vtEnd & closeSocket, vtRes={}", this.uid, child != null ? child.getName() : "none" );
         }
-
-        if( clientIn !=null ) try{  clientIn.close(); }catch (Exception e){ logger.debug("Error closing clientIn: {}", e.getMessage()); }
-        if( clientOut !=null ) try{ clientOut.close(); }catch(Exception e){ logger.debug("Error closing clientOut: {}", e.getMessage()); }
-        if( clientSocket !=null ) try{ clientSocket.close(); }catch(Exception e){ logger.debug("Error closing clientSocket: {}", e.getMessage()); }
 
         if( serverIn !=null ) try{ serverIn.close(); }catch(Exception e){ logger.debug("Error closing serverIn: {}", e.getMessage()); }
         if( serverOut !=null ) try{ serverOut.close(); }catch(Exception e){ logger.debug("Error closing serverOut: {}", e.getMessage()); }
         if( serverSocket !=null ) try{ serverSocket.close(); }catch(Exception e){ logger.debug("Error closing serverSocket: {}", e.getMessage()); }
 
-        clientIn = null;
-        clientOut = null;
-        clientSocket = null;
+        if( clientIn !=null ) try{  clientIn.close(); }catch (Exception e){ logger.debug("Error closing clientIn: {}", e.getMessage()); }
+        if( clientOut !=null ) try{ clientOut.close(); }catch(Exception e){ logger.debug("Error closing clientOut: {}", e.getMessage()); }
+        if( clientSocket !=null ) try{ clientSocket.close(); }catch(Exception e){ logger.debug("Error closing clientSocket: {}", e.getMessage()); }
 
         serverIn = null;
         serverOut = null;
         serverSocket = null;
+
+        clientIn = null;
+        clientOut = null;
+        clientSocket = null;
     }
 
     private Socket createServerSocket(String rid, String vhost, String uri) throws IOException {

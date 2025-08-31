@@ -6,6 +6,7 @@ import tricatch.gotpache.http.HTTP;
 import tricatch.gotpache.http.io.*;
 
 import java.io.IOException;
+import java.net.SocketTimeoutException;
 import java.util.concurrent.locks.LockSupport;
 
 public class PassResponseExecutor implements Runnable {
@@ -23,6 +24,7 @@ public class PassResponseExecutor implements Runnable {
         this.passRequestExecutor = passRequestExecutor;
         this.serverIn = serverIn;
         this.clientOut = clientOut;
+        this.rid = passRequestExecutor.getUid();
     }
 
     @Override
@@ -33,23 +35,16 @@ public class PassResponseExecutor implements Runnable {
 
         try {
 
+            if( logger.isDebugEnabled() ){
+                logger.debug( "{}, vtStart", this.passRequestExecutor.getUid() );
+            }
+
             while(true) {
-
-                this.rid = this.passRequestExecutor.getRid();
-
-                if (logger.isDebugEnabled()) {
-                    logger.debug("{}, {}, Wait - unpark"
-                            , rid
-                            , HttpStream.Flow.RES
-                    );
-                }
-                LockSupport.park();
-                if( this.passRequestExecutor.isStop() ){
-                    break;
-                }
 
                 //read-res-header
                 bytesRead = serverIn.readHeaders(responseHeaders, HTTP.MAX_HEADER_LENGTH);
+
+                this.rid = this.passRequestExecutor.getRid();
 
                 if (bytesRead == -1) {
                     logger.warn("{}, No headers received from server"
@@ -96,10 +91,14 @@ public class PassResponseExecutor implements Runnable {
                 LockSupport.unpark(this.passRequestExecutor.getThread());
             }
 
+        } catch (SocketTimeoutException e){
+            logger.error( this.passRequestExecutor.getUid() + ", " + e.getMessage());
         } catch (IOException e) {
-            String errorRid = rid != null ? rid : "unknown";
-            logger.error( errorRid + ", " + e.getMessage(), e);
+            logger.error( this.passRequestExecutor.getUid() + ", " + e.getMessage(), e);
         } finally {
+            if( logger.isDebugEnabled() ){
+                logger.debug( "{}, vtEnd", this.passRequestExecutor.getUid() );
+            }
             passRequestExecutor.setStop(true);
             LockSupport.unpark(this.passRequestExecutor.getThread());
         }
