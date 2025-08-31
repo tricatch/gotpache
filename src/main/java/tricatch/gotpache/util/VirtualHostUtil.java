@@ -2,12 +2,11 @@ package tricatch.gotpache.util;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import tricatch.gotpache.ProxyPassServer;
 import tricatch.gotpache.cfg.Config;
 import tricatch.gotpache.cfg.attr.VirtualDomain;
 import tricatch.gotpache.cfg.attr.VirtualLocation;
-import tricatch.gotpache.pass.VirtualHosts;
-import tricatch.gotpache.pass.VirtualPath;
+import tricatch.gotpache.server.VirtualHosts;
+import tricatch.gotpache.server.VirtualPath;
 
 import java.net.InetAddress;
 import java.net.MalformedURLException;

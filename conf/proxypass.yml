@@ -1,17 +1,17 @@
 http:
   port: 80
-  connectTimeout: 1000
-  readTimeout: 2000
+  connectTimeout: 3000
+  readTimeout: 30000
 
 https:
   port: 443
-  connectTimeout: 1000
-  readTimeout: 2000
+  connectTimeout: 3000
+  readTimeout: 30000
 
 console:
   port: 36912
-  connectTimeout: 1000
-  readTimeout: 2000
+  connectTimeout: 3000
+  readTimeout: 30000
 
 ca:
   cert: Gotpache ProxyPass CA-foo.cer
@@ -34,3 +34,7 @@ virtual:
   - domain: goo.kr
     location:
       - { host: http://127.0.0.1:8899, path: [ /** ], header: [ "Content-Security-Policy: frame-ancestors 'self' https://foo.kr", "--ETag" ] }
+
+  - domain: webtest.kr
+    location:
+      - { host: http://127.0.0.1:8989, path: [ /** ] }

@@ -1,8 +1,5 @@
 package tricatch.gotpache.util;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import javax.net.ssl.*;
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -13,11 +10,7 @@ import java.security.cert.X509Certificate;
 
 public class SocketUtils {
 
-    private static Logger logger = LoggerFactory.getLogger(SocketUtils.class);
-
     public static Socket createHttp(String host, int port, int connectTimeout, int readTimeout) throws IOException {
-
-        if( port<0 ) port = 80;
 
         InetSocketAddress endpoint = new InetSocketAddress(host, port);
 
@@ -29,10 +22,6 @@ public class SocketUtils {
     }
 
     public static Socket createHttps(String domain, String host, int port, int connectTimeout, int readTimeout) throws IOException {
-
-        if (logger.isDebugEnabled()) logger.debug("createHttps: domain={}, host={}, port={}", domain, host, port);
-
-        if( port<0 ) port = 443;
 
         InetSocketAddress endpoint = new InetSocketAddress(host, port);
 

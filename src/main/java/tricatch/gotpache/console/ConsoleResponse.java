@@ -5,7 +5,7 @@ import java.util.List;
 public class ConsoleResponse {
 
     private List<String> headers;
-    private byte[] response;
+    private byte[] body;
 
     public List<String> getHeaders() {
         return headers;
@@ -15,12 +15,12 @@ public class ConsoleResponse {
         this.headers = headers;
     }
 
-    public byte[] getResponse() {
-        return response;
+    public byte[] getBody() {
+        return body;
     }
 
-    public void setResponse(byte[] response) {
-        this.response = response;
+    public void setBody(byte[] body) {
+        this.body = body;
     }
 
 }

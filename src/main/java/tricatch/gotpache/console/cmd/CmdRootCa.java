@@ -6,7 +6,6 @@ import tricatch.gotpache.console.ConsoleResponse;
 import tricatch.gotpache.console.ConsoleResponseBuilder;
 
 import java.io.ByteArrayOutputStream;
-import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.nio.file.Path;
@@ -36,11 +35,9 @@ public class CmdRootCa implements ConsoleCommand {
 
             return ConsoleResponseBuilder.file(bout.toByteArray(), config.getCa().getCert());
 
-        } catch (IOException e) {
-            throw e;
         } finally {
-            if( fileInputStream!=null ) try{ fileInputStream.close(); }catch (Exception e){}
-            if( bout!=null ) try{ bout.reset(); }catch (Exception e){}
+            if( fileInputStream!=null ) try{ fileInputStream.close(); } catch (Exception e){}
+            try{ bout.reset(); } catch (Exception e){}
         }
 
     }

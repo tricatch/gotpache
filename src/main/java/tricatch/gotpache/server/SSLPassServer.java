@@ -1,16 +1,15 @@
-package tricatch.gotpache.pass;
+package tricatch.gotpache.server;
 
 import io.github.tricatch.gotpache.cert.KeyTool;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import tricatch.gotpache.ProxyPassServer;
 import tricatch.gotpache.cert.MultiDomainCertKeyManager;
 import tricatch.gotpache.cfg.Config;
 import tricatch.gotpache.cfg.attr.Ca;
 import tricatch.gotpache.cfg.attr.Https;
 import tricatch.gotpache.exception.ConfigException;
-import tricatch.gotpache.server.AbstractServer;
+import tricatch.gotpache.pass.PassRequestExecutor;
 
 import javax.net.ssl.KeyManager;
 import javax.net.ssl.SSLContext;
@@ -26,7 +25,7 @@ import java.security.cert.X509Certificate;
 
 public class SSLPassServer extends AbstractServer {
 
-    private static Logger logger = LoggerFactory.getLogger(tricatch.gotpache.pass.SSLPassServer.class);
+    private static final Logger logger = LoggerFactory.getLogger(SSLPassServer.class);
 
     private SSLContext sslContext;
 
@@ -44,7 +43,7 @@ public class SSLPassServer extends AbstractServer {
 
             KeyTool keyTool = new KeyTool();
             X509Certificate rootCertificate = keyTool.readCertificate("./conf", ca.getCert());
-            PrivateKey rootPrivateKey = null;
+            PrivateKey rootPrivateKey;
 
             if( config.getCa().getPriPwd()!=null && !ca.getPriPwd().trim().isEmpty() ){
                 rootPrivateKey = keyTool.readPrivateKey("./conf", ca.getPriKey(), ca.getPriPwd().trim());
@@ -70,14 +69,17 @@ public class SSLPassServer extends AbstractServer {
             engine.setUseClientMode(false);
 
         }catch(Exception e){
-            e.printStackTrace();
             throw new ConfigException( "ssl config error - " + e.getMessage(), e );
         }
     }
 
     public void run() {
 
+        SSLServerSocket sslSvrSocket = null;
+
         try {
+
+            Thread.currentThread().setName("pt-https-pass");
 
             String clazzName = this.getClass().getSimpleName();
             Https https = this.config.getHttps();
@@ -88,7 +90,7 @@ public class SSLPassServer extends AbstractServer {
             logger.info("{} client.read.timeout: {}", clazzName, https.getReadTimeout() );
 
             SSLServerSocketFactory ssf = this.sslContext.getServerSocketFactory();
-            SSLServerSocket sslSvrSocket = (SSLServerSocket) ssf.createServerSocket(https.getPort());
+            sslSvrSocket = (SSLServerSocket) ssf.createServerSocket(https.getPort());
             sslSvrSocket.setEnabledProtocols(new String[] { "TLSv1.3" });
 
             while (true) {
@@ -97,15 +99,19 @@ public class SSLPassServer extends AbstractServer {
 
                 if (socket == null) continue;
 
-                if (logger.isTraceEnabled()) logger.trace("new pass - h{}", socket.hashCode());
+                if (logger.isDebugEnabled()){
+                    logger.debug("New client - h{}", socket.hashCode());
+                }
 
                 socket.setSoTimeout(https.getReadTimeout());
 
-                ProxyPassServer.requestExecute(new PassExecutor(socket, this.virtualHosts, https.getConnectTimeout(), https.getReadTimeout()));
+                VThreadExecutor.run(new PassRequestExecutor(socket, this.virtualHosts, https.getConnectTimeout(), https.getReadTimeout()));
             }
 
         } catch (Exception e) {
             logger.error(e.getMessage(), e);
+        } finally {
+            if( sslSvrSocket!=null ) try{ sslSvrSocket.close(); } catch (Exception e){}
         }
     }
 }

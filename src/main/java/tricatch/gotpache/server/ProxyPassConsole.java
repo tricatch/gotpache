@@ -1,8 +1,7 @@
-package tricatch.gotpache.pass;
+package tricatch.gotpache.server;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import tricatch.gotpache.ProxyPassServer;
 import tricatch.gotpache.cfg.Config;
 import tricatch.gotpache.cfg.attr.Console;
 import tricatch.gotpache.console.ConsoleCommand;
@@ -16,13 +15,11 @@ import java.util.Map;
 
 public class ProxyPassConsole implements Runnable {
 
-    private static Logger logger = LoggerFactory.getLogger(ProxyPassConsole.class);
+    private static final Logger logger = LoggerFactory.getLogger(ProxyPassConsole.class);
 
-    protected Config config = null;
+    protected Config config;
 
     protected Map<String, ConsoleCommand> commands = new HashMap<>();
-
-    private ServerSocket svrSocket = null;
 
     public ProxyPassConsole(Config config) {
 
@@ -34,7 +31,11 @@ public class ProxyPassConsole implements Runnable {
     @Override
     public void run() {
 
+        ServerSocket svrSocket = null;
+
         try {
+
+            Thread.currentThread().setName("pt-console");
 
             String clazzName = this.getClass().getSimpleName();
             Console console = this.config.getConsole();
@@ -54,11 +55,13 @@ public class ProxyPassConsole implements Runnable {
 
                 socket.setSoTimeout(console.getConnectTimeout());
 
-                ProxyPassServer.requestExecute(new ConsoleExecutor(socket, commands, config));
+                VThreadExecutor.run(new ConsoleExecutor(socket, commands, config));
             }
 
         } catch (Exception e) {
             logger.error(e.getMessage(), e);
+        } finally {
+            if( svrSocket!=null ) try{ svrSocket.close(); } catch (Exception e){}
         }
     }
 }
