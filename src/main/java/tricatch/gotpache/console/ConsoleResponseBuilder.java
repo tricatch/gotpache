@@ -1,9 +1,8 @@
 package tricatch.gotpache.console;
 
 import tricatch.gotpache.ProxyPassServer;
-import tricatch.gotpache.util.StringUtils;
+import tricatch.gotpache.util.HtmlUtil;
 
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
@@ -13,16 +12,16 @@ public class ConsoleResponseBuilder {
 
     public static ConsoleResponse _404() throws IOException {
 
-        StringBuilder html = new StringBuilder();
-        html.append("<!DOCTYPE html>").append("\n");
-        html.append("<html>").append("\n");
-        html.append("<head><title>404 Not Found</title></head>").append("\n");
-        html.append("<body><h1>404 Not Found</h1>").append("\n");
-        html.append("<p>sorry it didn&#39;t work out :(</p>").append("\n");
-        html.append("</body>").append("\n");
-        html.append("</html>");
+        List<String> bodyHtml = new ArrayList<>();
+        bodyHtml.add("<!DOCTYPE html>");
+        bodyHtml.add("<html>");
+        bodyHtml.add("<head><title>404 Not Found</title></head>");
+        bodyHtml.add("<body><h1>404 Not Found</h1>");
+        bodyHtml.add("<p>sorry it didn&#39;t work out :(</p>");
+        bodyHtml.add("</body>");
+        bodyHtml.add("</html>");
 
-        byte[] body = html.toString().getBytes(StandardCharsets.UTF_8);
+        byte[] body = HtmlUtil.toBytes(bodyHtml);
 
         List<String> headers = new ArrayList<>();
         headers.add("HTTP/1.1 404 Not Found");
@@ -31,13 +30,9 @@ public class ConsoleResponseBuilder {
         headers.add("Date: " + date());
         headers.add("Server: " + server());
 
-        ByteArrayOutputStream bout = new ByteArrayOutputStream();
-        bout.write(body);
-        bout.write("\n".getBytes(StandardCharsets.UTF_8));
-
         ConsoleResponse res = new ConsoleResponse();
         res.setHeaders(headers);
-        res.setResponse(bout.toByteArray());
+        res.setBody(body);
 
         return res;
     }
@@ -53,13 +48,9 @@ public class ConsoleResponseBuilder {
         headers.add("Date: " + date());
         headers.add("Server: " + server());
 
-        ByteArrayOutputStream bout = new ByteArrayOutputStream();
-        bout.write(body);
-        bout.write("\n".getBytes(StandardCharsets.UTF_8));
-
         ConsoleResponse res = new ConsoleResponse();
         res.setHeaders(headers);
-        res.setResponse(bout.toByteArray());
+        res.setBody(body);
 
         return res;
     }
@@ -73,13 +64,9 @@ public class ConsoleResponseBuilder {
         headers.add("Date: " + date());
         headers.add("Server: " + server());
 
-        ByteArrayOutputStream bout = new ByteArrayOutputStream();
-        bout.write(body);
-        bout.write("\n".getBytes(StandardCharsets.UTF_8));
-
         ConsoleResponse res = new ConsoleResponse();
         res.setHeaders(headers);
-        res.setResponse(bout.toByteArray());
+        res.setBody(body);
 
         return res;
     }
@@ -94,13 +81,9 @@ public class ConsoleResponseBuilder {
         headers.add("Date: " + date());
         headers.add("Server: " + server());
 
-        ByteArrayOutputStream bout = new ByteArrayOutputStream();
-        bout.write(body);
-        bout.write("\n".getBytes(StandardCharsets.UTF_8));
-
         ConsoleResponse res = new ConsoleResponse();
         res.setHeaders(headers);
-        res.setResponse(bout.toByteArray());
+        res.setBody(body);
 
         return res;
     }
@@ -122,11 +105,11 @@ public class ConsoleResponseBuilder {
         sb.append("gotpache");
 
         String version = ProxyPassServer.class.getPackage().getImplementationVersion();
-        if(!StringUtils.isEmpty(version) ){
+        if( version!=null && !version.isEmpty() ){
             sb.append( "/" ).append( version );
         }
 
-        sb.append( " (" + System.getProperty("os.name") +")" );
+        sb.append(" (").append(System.getProperty("os.name")).append(")");
 
         return sb.toString();
     }

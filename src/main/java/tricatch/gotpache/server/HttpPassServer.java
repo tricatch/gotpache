@@ -1,13 +1,12 @@
-package tricatch.gotpache.pass;
+package tricatch.gotpache.server;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import tricatch.gotpache.ProxyPassServer;
 import tricatch.gotpache.cfg.Config;
 import tricatch.gotpache.cfg.attr.Http;
 import tricatch.gotpache.exception.ConfigException;
-import tricatch.gotpache.server.AbstractServer;
+import tricatch.gotpache.pass.PassRequestExecutor;
 
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -15,24 +14,24 @@ import java.net.Socket;
 
 public class HttpPassServer extends AbstractServer {
 
-    private static Logger logger = LoggerFactory.getLogger(HttpPassServer.class);
-
-
-    private VirtualHosts virtualHosts;
-    private ServerSocket svrSocket = null;
+    private static final Logger logger = LoggerFactory.getLogger(HttpPassServer.class);
 
     public HttpPassServer(Config config, VirtualHosts virtualHosts) throws ConfigException {
         super(config, virtualHosts);
     }
 
     @Override
-    public void conifg() throws ConfigException {
+    public void conifg() {
         //nothing to do
     }
 
     public void run() {
 
+        ServerSocket svrSocket = null;
+
         try {
+
+            Thread.currentThread().setName("pt-http-pass");
 
             String clazzName = this.getClass().getSimpleName();
             Http http = this.config.getHttp();
@@ -54,11 +53,13 @@ public class HttpPassServer extends AbstractServer {
 
                 socket.setSoTimeout(http.getConnectTimeout());
 
-                ProxyPassServer.requestExecute(new PassExecutor(socket, this.virtualHosts, http.getConnectTimeout(), http.getReadTimeout()));
+                VThreadExecutor.run(new PassRequestExecutor(socket, this.virtualHosts, http.getConnectTimeout(), http.getReadTimeout()));
             }
 
         } catch (Exception e) {
             logger.error(e.getMessage(), e);
+        } finally {
+            if( svrSocket!=null ) try{ svrSocket.close(); }catch (Exception e){}
         }
     }
 }

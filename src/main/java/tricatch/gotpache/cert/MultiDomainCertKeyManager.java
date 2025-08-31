@@ -21,15 +21,15 @@ import java.util.Map;
 
 public class MultiDomainCertKeyManager extends X509ExtendedKeyManager {
 
-	private static Logger logger = LoggerFactory.getLogger(MultiDomainCertKeyManager.class);
+	private static final Logger logger = LoggerFactory.getLogger(MultiDomainCertKeyManager.class);
 	
     private final Map<String, CertificateKeyPair> certificates = new HashMap<>();
     private final X509Certificate rootCertificate;
-    private final PrivateKey rootPrivaeKey;
+    private final PrivateKey rootPrivateKey;
 
-    public MultiDomainCertKeyManager(X509Certificate rootCertificate, PrivateKey rootPrivaeKey){
+    public MultiDomainCertKeyManager(X509Certificate rootCertificate, PrivateKey rootPrivateKey){
         this.rootCertificate = rootCertificate;
-        this.rootPrivaeKey = rootPrivaeKey;
+        this.rootPrivateKey = rootPrivateKey;
     }
 
     @Override
@@ -51,7 +51,7 @@ public class MultiDomainCertKeyManager extends X509ExtendedKeyManager {
         
         try {
             SSLCertificateCreator sslCertificateCreator = new SSLCertificateCreator();
-            CertificateKeyPair certificateKeyPair = sslCertificateCreator.generateSSLCertificate(domain, rootCertificate, rootPrivaeKey);
+            CertificateKeyPair certificateKeyPair = sslCertificateCreator.generateSSLCertificate(domain, rootCertificate, rootPrivateKey);
             certificates.put(domain, certificateKeyPair);
         	return domain;
         }catch(Exception e) {
@@ -69,7 +69,7 @@ public class MultiDomainCertKeyManager extends X509ExtendedKeyManager {
         throw new UnsupportedOperationException("Method getClientAliases() not yet implemented.");
     }
 
-    public String chooseClientAlias(String keyTypes[], Principal[] issuers, Socket socket) {
+    public String chooseClientAlias(String[] keyTypes, Principal[] issuers, Socket socket) {
         throw new UnsupportedOperationException("Method chooseClientAlias() not yet implemented.");
     }
 

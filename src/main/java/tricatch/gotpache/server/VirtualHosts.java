@@ -1,9 +1,7 @@
-package tricatch.gotpache.pass;
+package tricatch.gotpache.server;
 
 import java.util.List;
 import java.util.HashMap;
 
 public class VirtualHosts extends HashMap<String, List<VirtualPath>> {
-
-	private static final long serialVersionUID = 1L;
 }

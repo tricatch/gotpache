@@ -10,10 +10,10 @@ import org.yaml.snakeyaml.Yaml;
 import org.yaml.snakeyaml.constructor.Constructor;
 import org.yaml.snakeyaml.representer.Representer;
 import tricatch.gotpache.cfg.Config;
-import tricatch.gotpache.pass.HttpPassServer;
-import tricatch.gotpache.pass.ProxyPassConsole;
-import tricatch.gotpache.pass.SSLPassServer;
-import tricatch.gotpache.pass.VirtualHosts;
+import tricatch.gotpache.server.HttpPassServer;
+import tricatch.gotpache.server.ProxyPassConsole;
+import tricatch.gotpache.server.SSLPassServer;
+import tricatch.gotpache.server.VirtualHosts;
 import tricatch.gotpache.util.JsonUtil;
 import tricatch.gotpache.util.VirtualHostUtil;
 
@@ -24,32 +24,13 @@ import java.util.concurrent.ThreadPoolExecutor;
 
 public class ProxyPassServer {
 
-    private static Logger logger = LoggerFactory.getLogger(ProxyPassServer.class);
+    private static final Logger logger = LoggerFactory.getLogger(ProxyPassServer.class);
 
     private static final String CFG_FILE = "./conf/proxypass.yml";
 
     public static Config config = null;
     public static VirtualHosts virtualHosts = null;
-
-    public static final int MAX_THREAD = 100;
-
-    public static ThreadPoolExecutor requestExecutor = (ThreadPoolExecutor) Executors.newFixedThreadPool(MAX_THREAD);
     public static ThreadPoolExecutor serverExecutor = (ThreadPoolExecutor) Executors.newCachedThreadPool();
-
-    public static void requestExecute( Runnable runnable ){
-
-        int active = requestExecutor.getActiveCount();
-
-        if( active>=MAX_THREAD ){
-            logger.warn( "No more thread - MAX={}", active);
-        }
-
-        requestExecutor.execute( runnable );
-    }
-
-    public static int requestActive(){
-        return requestExecutor.getActiveCount();
-    }
 
     public static void main(String[] args) {
 

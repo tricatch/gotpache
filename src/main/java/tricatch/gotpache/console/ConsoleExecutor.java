@@ -15,13 +15,13 @@ import java.util.Map;
 
 public class ConsoleExecutor implements Runnable {
 
-    private static Logger logger = LoggerFactory.getLogger(ConsoleExecutor.class);
+    private static final Logger logger = LoggerFactory.getLogger(ConsoleExecutor.class);
 
-    private Socket clientSocket = null;
+    private Socket clientSocket;
     private OutputStream clientOut = null;
     private InputStream clientIn = null;
-    private Map<String, ConsoleCommand> commands;
-    private Config config;
+    private final Map<String, ConsoleCommand> commands;
+    private final Config config;
 
     public ConsoleExecutor(Socket clientSocket, Map<String, ConsoleCommand> commands, Config config) {
 
@@ -48,7 +48,7 @@ public class ConsoleExecutor implements Runnable {
 
             ConsoleCommand cmd = commands.get(uri);
 
-            ConsoleResponse res = null;
+            ConsoleResponse res;
 
             if (cmd != null) res = cmd.execute(uri, config);
             else res = ConsoleResponseBuilder._404();
@@ -56,17 +56,17 @@ public class ConsoleExecutor implements Runnable {
             //header
             List<String> headers = res.getHeaders();
 
-            if (logger.isDebugEnabled()) logger.debug("console, res={}", headers.get(0));
+            if (logger.isDebugEnabled()) logger.debug("console, res={}", headers.getFirst());
 
-            for (int i = 0; i < headers.size(); i++) {
-                clientOut.write(headers.get(i).getBytes(StandardCharsets.UTF_8));
+            for (String header : headers) {
+                clientOut.write(header.getBytes(StandardCharsets.UTF_8));
                 clientOut.write(HTTP.CRLF);
             }
             clientOut.write(HTTP.CRLF);
             clientOut.flush();
 
             //body
-            clientOut.write(res.getResponse());
+            clientOut.write(res.getBody());
             clientOut.flush();
 
         } catch (IOException e) {
