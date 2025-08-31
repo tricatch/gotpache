@@ -70,10 +70,11 @@ public class RelayChunked {
             }
 
             if (logger.isDebugEnabled()) {
-                logger.debug("{}, {}, Chunk size: {}"
+                logger.debug("{}, {}, Chunk size: {} / hx{}"
                         , rid
                         , flow
                         , chunkSize
+                        , chunkSizeLine
                 );
             }
 
@@ -94,6 +95,13 @@ public class RelayChunked {
                     }
 
                     if( bytesRead>0 ){
+                        if( logger.isDebugEnabled() ){
+                            logger.debug("{}, {}, Chunk trailer: {}"
+                                    , rid
+                                    , flow
+                                    , new String(chunkTrailerBuffer.getBuffer(), 0, chunkTrailerBuffer.getLength())
+                            );
+                        }
                         out.write(chunkTrailerBuffer.getBuffer(), 0, chunkTrailerBuffer.getLength());
                     }
 
