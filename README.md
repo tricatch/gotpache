@@ -11,6 +11,9 @@ apache/nginx의 복잡한 기능을 가지고 있지 않지만, ProxyPass와 유
 
 ### Release Note
 
+#### v0.5.1
+* TLS 1.3, +1.2 
+
 #### v0.5.0
 * HTTP 1.1 지원 
 * JDK 21 이상 
