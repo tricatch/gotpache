@@ -45,7 +45,7 @@ public class SocketUtils {
         SSLContext sc = null;
 
         try {
-            sc = SSLContext.getInstance("SSL");
+            sc = SSLContext.getInstance("TLS");
             sc.init(null, trustAllCerts, new SecureRandom());
         } catch (Exception e) {
             throw new IOException(e);
