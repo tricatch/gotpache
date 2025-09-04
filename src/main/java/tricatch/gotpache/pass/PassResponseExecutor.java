@@ -6,6 +6,7 @@ import tricatch.gotpache.http.HTTP;
 import tricatch.gotpache.http.io.*;
 
 import java.io.IOException;
+import java.net.SocketException;
 import java.net.SocketTimeoutException;
 import java.util.concurrent.locks.LockSupport;
 
@@ -91,8 +92,16 @@ public class PassResponseExecutor implements Runnable {
                 LockSupport.unpark(this.passRequestExecutor.getThread());
             }
 
-        } catch (SocketTimeoutException e){
-            logger.error( this.passRequestExecutor.getUid() + ", " + e.getMessage());
+        } catch (SocketTimeoutException e) {
+            logger.error(this.passRequestExecutor.getUid() + ", " + e.getMessage());
+        } catch (SocketException e){
+            if( "Connection reset".equals(e.getMessage())
+                || "Socket closed".equals(e.getMessage())
+            ) {
+                logger.error(this.passRequestExecutor.getUid() + ", " + e.getMessage());
+            } else {
+                logger.error( this.passRequestExecutor.getUid() + ", " + e.getMessage(), e);
+            }
         } catch (IOException e) {
             logger.error( this.passRequestExecutor.getUid() + ", " + e.getMessage(), e);
         } finally {

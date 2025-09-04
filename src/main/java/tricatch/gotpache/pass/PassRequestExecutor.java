@@ -18,6 +18,7 @@ import tricatch.gotpache.util.SysUtil;
 
 import java.io.IOException;
 import java.net.Socket;
+import java.net.SocketException;
 import java.net.SocketTimeoutException;
 import java.net.URL;
 import java.util.List;
@@ -170,6 +171,14 @@ public class PassRequestExecutor implements Runnable {
             }
         } catch (SocketTimeoutException e){
             logger.error( uid + ", " + e.getMessage());
+        } catch (SocketException e){
+            if( "Connection reset".equals(e.getMessage())
+                    || "Socket closed".equals(e.getMessage())
+            ) {
+                logger.error( uid + ", " + e.getMessage());
+            } else {
+                logger.error( uid + ", " + e.getMessage(), e);
+            }
         } catch (IOException e) {
             logger.error( uid + ", " + e.getMessage(), e);
         } finally {
@@ -253,7 +262,7 @@ public class PassRequestExecutor implements Runnable {
                         , vhost
                 );
             }
-            return SocketUtils.createHttps(vhost, target.getHost(), target.getPort(), this.connectTimeout, this.readTimeout);
+            return SocketUtils.createHttps(vhost, target.getHost(), port, this.connectTimeout, this.readTimeout);
         } else {
             int port = target.getPort() <= 0 ? 80 : target.getPort();
             if( logger.isDebugEnabled() ) logger.debug("{}, {}, Create HTTP {}:{} / {}"
@@ -263,7 +272,7 @@ public class PassRequestExecutor implements Runnable {
                     , port
                     , vhost
             );
-            return SocketUtils.createHttp(target.getHost(), target.getPort(), this.connectTimeout, this.readTimeout);
+            return SocketUtils.createHttp(target.getHost(), port, this.connectTimeout, this.readTimeout);
         }
     }
 
