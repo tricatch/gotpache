@@ -6,6 +6,7 @@ import org.slf4j.LoggerFactory;
 
 import tricatch.gotpache.cert.MultiDomainCertKeyManager;
 import tricatch.gotpache.cfg.Config;
+import tricatch.gotpache.cfg.VirtualHostsMap;
 import tricatch.gotpache.cfg.attr.Ca;
 import tricatch.gotpache.cfg.attr.Https;
 import tricatch.gotpache.exception.ConfigException;
@@ -30,8 +31,8 @@ public class SSLPassServer extends AbstractServer {
     private SSLContext sslContext;
 
 
-    public SSLPassServer(Config config, VirtualHosts virtualHosts) throws ConfigException {
-        super(config, virtualHosts);
+    public SSLPassServer(Config config) throws ConfigException {
+        super(config);
     }
 
     @Override
@@ -105,7 +106,7 @@ public class SSLPassServer extends AbstractServer {
 
                 socket.setSoTimeout(https.getReadTimeout());
 
-                VThreadExecutor.run(new PassRequestExecutor(socket, this.virtualHosts, https.getConnectTimeout(), https.getReadTimeout()));
+                VThreadExecutor.run(new PassRequestExecutor(socket, https.getConnectTimeout(), https.getReadTimeout()));
             }
 
         } catch (Exception e) {

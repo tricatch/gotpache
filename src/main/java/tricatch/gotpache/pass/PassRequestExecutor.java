@@ -4,6 +4,7 @@ import io.github.azagniotov.matcher.AntPathMatcher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import tricatch.gotpache.ProxyPassServer;
 import tricatch.gotpache.http.HTTP;
 import tricatch.gotpache.http.io.HttpStream;
 import tricatch.gotpache.http.io.HeaderLines;
@@ -36,7 +37,6 @@ public class PassRequestExecutor implements Runnable {
     private HttpStreamReader serverIn = null;
     private HttpStreamWriter serverOut = null;
 
-    private final VirtualHosts virtualHosts;
     private final int connectTimeout;
     private final int readTimeout;
 
@@ -50,11 +50,11 @@ public class PassRequestExecutor implements Runnable {
     private final String uid = SysUtil.generateRequestId();
     private String rid = uid;
     private int reqCounter = 0;
+    private VirtualHosts virtualHosts = null;
 
-    public PassRequestExecutor(Socket clientSocket, VirtualHosts virtualHosts, int connectTimeout, int readTimeout){
+    public PassRequestExecutor(Socket clientSocket, int connectTimeout, int readTimeout){
 
         this.clientSocket = clientSocket;
-        this.virtualHosts = virtualHosts;
         this.connectTimeout = connectTimeout;
         this.readTimeout = readTimeout;
     }
@@ -83,8 +83,11 @@ public class PassRequestExecutor implements Runnable {
 
         try {
 
+            String clientId = this.clientSocket.getInetAddress().getHostAddress();
+            this.virtualHosts = ProxyPassServer.getVirtualHosts(clientId);
+
             if( logger.isDebugEnabled() ){
-                logger.debug( "{}, vtStart", this.uid );
+                logger.debug( "{}, vtStart / {}", this.uid, clientId );
             }
 
             thisThread = Thread.currentThread();
@@ -131,7 +134,7 @@ public class PassRequestExecutor implements Runnable {
 
                 //create socket - url matched
                 if (serverSocket == null) {
-                    serverSocket = createServerSocket(rid, httpRequest.getHost(), httpRequest.getPath());
+                    serverSocket = createServerSocket(rid, clientId, httpRequest.getHost(), httpRequest.getPath());
                     serverIn = new HttpStreamReader(serverSocket.getInputStream(), HTTP.BODY_BUFFER_SIZE);
                     serverOut = new HttpStreamWriter(serverSocket.getOutputStream());
 
@@ -212,7 +215,7 @@ public class PassRequestExecutor implements Runnable {
         clientSocket = null;
     }
 
-    private Socket createServerSocket(String rid, String vhost, String uri) throws IOException {
+    private Socket createServerSocket(String rid, String clientId, String vhost, String uri) throws IOException {
 
         if( logger.isDebugEnabled() ){
             logger.debug( "{}, {}, Create Socket, vhost={}, uri={}"
@@ -223,7 +226,7 @@ public class PassRequestExecutor implements Runnable {
             );
         }
 
-        List<VirtualPath> urls = this.virtualHosts.get(vhost);
+        List<VirtualPath> urls = virtualHosts.get(vhost);
 
         if( urls==null || urls.isEmpty()) throw new IOException( "Undefined vhost - " + vhost );
 

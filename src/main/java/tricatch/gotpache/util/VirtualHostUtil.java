@@ -21,7 +21,7 @@ public class VirtualHostUtil {
 
     private static Logger logger = LoggerFactory.getLogger(VirtualHostUtil.class);
 
-    public static VirtualHosts convert(List<VirtualDomain> virtualDomains, Config config) throws MalformedURLException {
+    public static VirtualHosts convert(List<VirtualDomain> virtualDomains) throws MalformedURLException {
 
         VirtualHosts virtualHosts = new VirtualHosts();
 
@@ -30,17 +30,6 @@ public class VirtualHostUtil {
             VirtualDomain virtualDomain = virtualDomains.get(v);
 
             String domain = virtualDomain.getDomain();
-
-            try {
-                String domainIp = InetAddress.getByName(domain).getHostAddress();
-                if (!config.getLocalDomainIP().equals(domainIp)){
-                    logger.warn("{} is not local domain", domain);
-                    continue;
-                }
-            } catch (UnknownHostException e) {
-                logger.warn("{} is not local domain", domain);
-                continue;
-            }
 
             List<VirtualPath> virtualPathListExact = new ArrayList<>();
             List<VirtualPath> virtualPathListPattern = new ArrayList<>();
