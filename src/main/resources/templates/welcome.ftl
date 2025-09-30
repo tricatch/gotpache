@@ -62,7 +62,7 @@
                             </a>
                         </div>
                         <div>
-                            <a href="/settings" class="uk-button uk-button-default uk-button-large menu-button">
+                            <a href="#" onclick="openSettings(); return false;" class="uk-button uk-button-default uk-button-large menu-button">
                                 <span uk-icon="icon: settings"></span> Proxy Config
                             </a>
                         </div>
@@ -141,6 +141,10 @@
             }, function() {
                 // User cancelled
             });
+        }
+        
+        function openSettings() {
+            window.location.href = '/proxyconfig';
         }
     </script>
 </body>

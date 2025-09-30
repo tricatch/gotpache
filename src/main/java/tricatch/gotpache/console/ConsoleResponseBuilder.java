@@ -88,6 +88,42 @@ public class ConsoleResponseBuilder {
         return res;
     }
 
+    public static ConsoleResponse ok(String text, String contentType) throws IOException {
+
+        byte[] body = text.getBytes(StandardCharsets.UTF_8);
+
+        List<String> headers = new ArrayList<>();
+        headers.add("HTTP/1.1 200 OK");
+        headers.add("Content-Type: " + contentType + "; charset=utf-8");
+        headers.add("Content-Length: " + body.length);
+        headers.add("Date: " + date());
+        headers.add("Server: " + server());
+
+        ConsoleResponse res = new ConsoleResponse();
+        res.setHeaders(headers);
+        res.setBody(body);
+
+        return res;
+    }
+
+    public static ConsoleResponse error(String message) throws IOException {
+
+        byte[] body = message.getBytes(StandardCharsets.UTF_8);
+
+        List<String> headers = new ArrayList<>();
+        headers.add("HTTP/1.1 400 Bad Request");
+        headers.add("Content-Type: text/plain; charset=utf-8");
+        headers.add("Content-Length: " + body.length);
+        headers.add("Date: " + date());
+        headers.add("Server: " + server());
+
+        ConsoleResponse res = new ConsoleResponse();
+        res.setHeaders(headers);
+        res.setBody(body);
+
+        return res;
+    }
+
 
     private static String date() {
 

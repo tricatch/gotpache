@@ -67,6 +67,10 @@ public class ConsoleHttpHandler implements HttpHandler {
                     }
                     params = parseQuery(buf.toString());
                 }
+                
+                // Add client IP to params
+                String clientIp = getClientIp(exchange);
+                params.put("clientIp", clientIp);
 
                 res = cmd.execute(uri, params);
 
@@ -117,6 +121,23 @@ public class ConsoleHttpHandler implements HttpHandler {
                 logger.error("Failed to send error response", ioException);
             }
         }
+    }
+
+    private String getClientIp(HttpExchange exchange) {
+        // Try to get real client IP from headers first
+        String xForwardedFor = exchange.getRequestHeaders().getFirst("X-Forwarded-For");
+        if (xForwardedFor != null && !xForwardedFor.isEmpty()) {
+            // X-Forwarded-For can contain multiple IPs, take the first one
+            return xForwardedFor.split(",")[0].trim();
+        }
+        
+        String xRealIp = exchange.getRequestHeaders().getFirst("X-Real-IP");
+        if (xRealIp != null && !xRealIp.isEmpty()) {
+            return xRealIp;
+        }
+        
+        // Fall back to remote address
+        return exchange.getRemoteAddress().getAddress().getHostAddress();
     }
 
     private Map<String, String> parseQuery(String query) throws UnsupportedEncodingException {
