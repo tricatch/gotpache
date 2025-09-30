@@ -1,5 +1,6 @@
 package tricatch.gotpache.console.cmd;
 
+import tricatch.gotpache.ProxyPassServer;
 import tricatch.gotpache.cfg.Config;
 import tricatch.gotpache.console.ConsoleCommand;
 import tricatch.gotpache.console.ConsoleResponse;
@@ -10,11 +11,14 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Map;
 
 public class CmdRootCa implements ConsoleCommand {
 
     @Override
-    public ConsoleResponse execute(String uri, Config config) throws IOException {
+    public ConsoleResponse execute(String uri, Map<String, String> params) throws IOException {
+
+        Config config = ProxyPassServer.getConfig();
 
         Path filePath = Paths.get("./conf", config.getCa().getCert());
 

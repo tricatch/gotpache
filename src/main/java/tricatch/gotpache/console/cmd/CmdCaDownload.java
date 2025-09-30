@@ -2,6 +2,7 @@ package tricatch.gotpache.console.cmd;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import tricatch.gotpache.ProxyPassServer;
 import tricatch.gotpache.cfg.Config;
 import tricatch.gotpache.console.ConsoleCommand;
 import tricatch.gotpache.console.ConsoleResponse;
@@ -11,15 +12,19 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Map;
 
 public class CmdCaDownload implements ConsoleCommand {
 
     private static final Logger logger = LoggerFactory.getLogger(CmdCaDownload.class);
 
     @Override
-    public ConsoleResponse execute(String uri, Config config) {
+    public ConsoleResponse execute(String uri, Map<String, String> params) {
 
         try {
+
+            Config config = ProxyPassServer.getConfig();
+
             // Get CA certificate file path from config
             String certFileName = config.getCa().getCert();
             if (certFileName == null || certFileName.trim().isEmpty()) {
@@ -71,8 +76,8 @@ public class CmdCaDownload implements ConsoleCommand {
             byte[] certData = Files.readAllBytes(certPath);
             logger.info("CA certificate downloaded successfully: {} ({} bytes)", certFileName, certData.length);
 
-            // Return file download response
-            return ConsoleResponseBuilder.file(certData, "gotpache-ca.cer");
+            // Return file download response with original filename from config
+            return ConsoleResponseBuilder.file(certData, certFileName);
 
         } catch (IOException e) {
             logger.error("Failed to read CA certificate file", e);

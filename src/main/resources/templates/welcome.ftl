@@ -22,6 +22,16 @@
         .menu-button {
             width: 200px;
             min-width: 200px;
+            padding-left: 20px;
+            padding-right: 20px;
+        }
+        body {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        .main-content {
+            flex: 1;
         }
     </style>
 </head>
@@ -47,18 +57,23 @@
                 <div class="uk-margin-large">
                     <div class="uk-child-width-auto uk-grid-small uk-flex-center" uk-grid>
                         <div>
-                            <a href="/network" class="uk-button uk-button-primary uk-button-large menu-button">
-                                <span uk-icon="icon: world"></span> Network
-                            </a>
-                        </div>
-                        <div>
-                            <a href="/ca/download" class="uk-button uk-button-default uk-button-large menu-button">
-                                <span uk-icon="icon: download"></span> CA Down
+                            <a href="#" onclick="showComingSoonAlert(); return false;" class="uk-button uk-button-primary uk-button-large menu-button">
+                                <span uk-icon="icon: world"></span> Monitor
                             </a>
                         </div>
                         <div>
                             <a href="/settings" class="uk-button uk-button-default uk-button-large menu-button">
-                                <span uk-icon="icon: settings"></span> Setting
+                                <span uk-icon="icon: settings"></span> Proxy Config
+                            </a>
+                        </div>
+                        <div>
+                            <a href="/ca/download" class="uk-button uk-button-default uk-button-large menu-button">
+                                <span uk-icon="icon: download"></span> CA Download
+                            </a>
+                        </div>
+                        <div>
+                            <a href="#" onclick="confirmCaGenerate(); return false;" class="uk-button uk-button-default uk-button-large menu-button">
+                                <span uk-icon="icon: plus"></span> CA Generate
                             </a>
                         </div>
                     </div>
@@ -68,7 +83,7 @@
     </div>
 
     <!-- Features Section -->
-    <div class="uk-section uk-section-default">
+    <div class="main-content uk-section uk-section-default">
         <div class="uk-container uk-container-large">
             <div class="uk-text-center uk-margin-large-bottom">
                 <h2 class="uk-heading-medium">Key Features</h2>
@@ -108,18 +123,25 @@
     </div>
 
 
-    <!-- Footer -->
-    <div class="uk-section uk-section-secondary uk-light">
-        <div class="uk-container">
-            <div class="uk-text-center">
-                    <p class="uk-text-muted">
-                    gotpache Console v0.6.0 | 
-                    <a href="https://github.com/tricatch/gotpache" class="uk-link-muted">
-                        <span uk-icon="icon: github"></span> GitHub
-                    </a>
-                </p>
-            </div>
-        </div>
-    </div>
+    <#include "common/footer.ftl">
+    
+    <script>
+        function showComingSoonAlert() {
+            UIkit.notification({
+                message: 'Monitor feature is coming soon!',
+                status: 'primary',
+                pos: 'top-center',
+                timeout: 3000
+            });
+        }
+        
+        function confirmCaGenerate() {
+            UIkit.modal.confirm('Are you sure you want to generate a new CA certificate?<br><br><strong>Warning:</strong> This will overwrite any existing CA certificate and may require server restart.').then(function() {
+                window.location.href = '/ca/generate';
+            }, function() {
+                // User cancelled
+            });
+        }
+    </script>
 </body>
 </html>

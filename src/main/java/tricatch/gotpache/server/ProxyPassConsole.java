@@ -4,12 +4,14 @@ import com.sun.net.httpserver.HttpServer;
 import com.sun.net.httpserver.HttpHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import tricatch.gotpache.ProxyPassServer;
 import tricatch.gotpache.cfg.Config;
 import tricatch.gotpache.cfg.attr.Console;
 import tricatch.gotpache.console.ConsoleCommand;
-import tricatch.gotpache.console.cmd.CmdRootCa;
 import tricatch.gotpache.console.cmd.CmdWelcome;
 import tricatch.gotpache.console.cmd.CmdCaDownload;
+import tricatch.gotpache.console.cmd.CmdCaGenerate;
+import tricatch.gotpache.console.cmd.CmdCaCreate;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -20,17 +22,15 @@ public class ProxyPassConsole implements Runnable {
 
     private static final Logger logger = LoggerFactory.getLogger(ProxyPassConsole.class);
 
-    protected Config config;
-
     protected Map<String, ConsoleCommand> commands = new HashMap<>();
 
-    public ProxyPassConsole(Config config) {
-
-        this.config = config;
+    public ProxyPassConsole() {
 
         commands.put("/", new CmdWelcome());
         commands.put("/welcome", new CmdWelcome());
         commands.put("/ca/download", new CmdCaDownload());
+        commands.put("/ca/generate", new CmdCaGenerate());
+        commands.put("/ca/create", new CmdCaCreate());
     }
 
     @Override
@@ -40,8 +40,10 @@ public class ProxyPassConsole implements Runnable {
 
             Thread.currentThread().setName("pt-console");
 
+            Config config = ProxyPassServer.getConfig();
+
             String clazzName = this.getClass().getSimpleName();
-            Console console = this.config.getConsole();
+            Console console = config.getConsole();
 
             logger.info("{} running...", clazzName);
             logger.info("{} port: {}", clazzName, console.getPort());

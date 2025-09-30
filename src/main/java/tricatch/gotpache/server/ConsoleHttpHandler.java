@@ -9,8 +9,14 @@ import tricatch.gotpache.console.ConsoleCommand;
 import tricatch.gotpache.console.ConsoleResponse;
 import tricatch.gotpache.console.ConsoleResponseBuilder;
 
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.io.OutputStream;
+import java.io.UnsupportedEncodingException;
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -46,8 +52,26 @@ public class ConsoleHttpHandler implements HttpHandler {
             ConsoleResponse res;
 
             if (cmd != null) {
-                res = cmd.execute(uri, config);
+                String method = exchange.getRequestMethod();
+                
+                Map<String, String> params = new HashMap<>();
+                if ("GET".equalsIgnoreCase(method)) {
+                    params = parseQuery(exchange.getRequestURI().getRawQuery());
+                } else if ("POST".equalsIgnoreCase(method)) {
+                    InputStreamReader isr = new InputStreamReader(exchange.getRequestBody(), StandardCharsets.UTF_8);
+                    BufferedReader br = new BufferedReader(isr);
+                    StringBuilder buf = new StringBuilder();
+                    String line;
+                    while ((line = br.readLine()) != null) {
+                        buf.append(line);
+                    }
+                    params = parseQuery(buf.toString());
+                }
+
+                res = cmd.execute(uri, params);
+
             } else {
+
                 res = ConsoleResponseBuilder._404();
             }
 
@@ -93,5 +117,18 @@ public class ConsoleHttpHandler implements HttpHandler {
                 logger.error("Failed to send error response", ioException);
             }
         }
+    }
+
+    private Map<String, String> parseQuery(String query) throws UnsupportedEncodingException {
+        Map<String, String> result = new HashMap<>();
+        if (query == null || query.isEmpty()) return result;
+
+        for (String param : query.split("&")) {
+            String[] pair = param.split("=", 2);
+            String key = URLDecoder.decode(pair[0], StandardCharsets.UTF_8);
+            String value = pair.length > 1 ? URLDecoder.decode(pair[1], StandardCharsets.UTF_8) : "";
+            result.put(key, value);
+        }
+        return result;
     }
 }
