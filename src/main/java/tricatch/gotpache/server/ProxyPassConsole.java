@@ -9,6 +9,7 @@ import tricatch.gotpache.cfg.attr.Console;
 import tricatch.gotpache.console.ConsoleCommand;
 import tricatch.gotpache.console.cmd.CmdRootCa;
 import tricatch.gotpache.console.cmd.CmdWelcome;
+import tricatch.gotpache.console.cmd.CmdCaDownload;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -27,9 +28,9 @@ public class ProxyPassConsole implements Runnable {
 
         this.config = config;
 
-        commands.put(this.config.getCa().getDownload(), new CmdRootCa());
         commands.put("/", new CmdWelcome());
         commands.put("/welcome", new CmdWelcome());
+        commands.put("/ca/download", new CmdCaDownload());
     }
 
     @Override

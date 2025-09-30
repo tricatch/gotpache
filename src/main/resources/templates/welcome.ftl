@@ -72,7 +72,7 @@
         <div class="uk-container uk-container-large">
             <div class="uk-text-center uk-margin-large-bottom">
                 <h2 class="uk-heading-medium">Key Features</h2>
-                <p class="uk-text-muted">Discover the core features of GotPache</p>
+                <p class="uk-text-muted">Discover the core features of gotpache</p>
             </div>
             
             <div class="uk-child-width-1-3@m uk-grid-match" uk-grid>
@@ -112,8 +112,8 @@
     <div class="uk-section uk-section-secondary uk-light">
         <div class="uk-container">
             <div class="uk-text-center">
-                <p class="uk-text-muted">
-                    GotPache Console v0.6.0 | 
+                    <p class="uk-text-muted">
+                    gotpache Console v0.6.0 | 
                     <a href="https://github.com/tricatch/gotpache" class="uk-link-muted">
                         <span uk-icon="icon: github"></span> GitHub
                     </a>
