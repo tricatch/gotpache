@@ -1,0 +1,97 @@
+package tricatch.gotpache.server;
+
+import com.sun.net.httpserver.HttpExchange;
+import com.sun.net.httpserver.HttpHandler;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import tricatch.gotpache.cfg.Config;
+import tricatch.gotpache.console.ConsoleCommand;
+import tricatch.gotpache.console.ConsoleResponse;
+import tricatch.gotpache.console.ConsoleResponseBuilder;
+
+import java.io.IOException;
+import java.io.OutputStream;
+import java.util.List;
+import java.util.Map;
+
+public class ConsoleHttpHandler implements HttpHandler {
+
+    private static final Logger logger = LoggerFactory.getLogger(ConsoleHttpHandler.class);
+
+    private final Map<String, ConsoleCommand> commands;
+    private final Config config;
+
+    public ConsoleHttpHandler(Map<String, ConsoleCommand> commands, Config config) {
+        this.commands = commands;
+        this.config = config;
+    }
+
+    @Override
+    public void handle(HttpExchange exchange) throws IOException {
+
+        try {
+
+            if (logger.isTraceEnabled()) {
+                logger.trace("new request - h{}", exchange.hashCode());
+            }
+
+            String uri = exchange.getRequestURI().getPath();
+
+            if (logger.isDebugEnabled()) {
+                logger.debug("console, req={}", uri);
+            }
+
+            ConsoleCommand cmd = commands.get(uri);
+
+            ConsoleResponse res;
+
+            if (cmd != null) {
+                res = cmd.execute(uri, config);
+            } else {
+                res = ConsoleResponseBuilder._404();
+            }
+
+            // Send response headers
+            List<String> headers = res.getHeaders();
+            
+            if (logger.isDebugEnabled()) {
+                logger.debug("console, res={}", headers.getFirst());
+            }
+
+            // Parse status code from first header line
+            String statusLine = headers.get(0);
+            int statusCode = Integer.parseInt(statusLine.split(" ")[1]);
+            
+            // Set response headers (excluding status line)
+            for (int i = 1; i < headers.size(); i++) {
+                String header = headers.get(i);
+                String[] parts = header.split(": ", 2);
+                if (parts.length == 2) {
+                    exchange.getResponseHeaders().set(parts[0], parts[1]);
+                }
+            }
+
+            // Send response
+            exchange.sendResponseHeaders(statusCode, res.getBody().length);
+            
+            try (OutputStream responseBody = exchange.getResponseBody()) {
+                responseBody.write(res.getBody());
+                responseBody.flush();
+            }
+
+        } catch (Exception e) {
+            logger.error(e.getMessage(), e);
+            
+            // Send 500 error response
+            try {
+                ConsoleResponse errorResponse = ConsoleResponseBuilder._404();
+                exchange.sendResponseHeaders(500, errorResponse.getBody().length);
+                try (OutputStream responseBody = exchange.getResponseBody()) {
+                    responseBody.write(errorResponse.getBody());
+                }
+            } catch (IOException ioException) {
+                logger.error("Failed to send error response", ioException);
+            }
+        }
+    }
+}

@@ -1,15 +1,17 @@
 package tricatch.gotpache.server;
 
+import com.sun.net.httpserver.HttpServer;
+import com.sun.net.httpserver.HttpHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import tricatch.gotpache.cfg.Config;
 import tricatch.gotpache.cfg.attr.Console;
 import tricatch.gotpache.console.ConsoleCommand;
-import tricatch.gotpache.console.ConsoleExecutor;
 import tricatch.gotpache.console.cmd.CmdRootCa;
+import tricatch.gotpache.console.cmd.CmdWelcome;
 
-import java.net.ServerSocket;
-import java.net.Socket;
+import java.io.IOException;
+import java.net.InetSocketAddress;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -26,12 +28,12 @@ public class ProxyPassConsole implements Runnable {
         this.config = config;
 
         commands.put(this.config.getCa().getDownload(), new CmdRootCa());
+        commands.put("/", new CmdWelcome());
+        commands.put("/welcome", new CmdWelcome());
     }
 
     @Override
     public void run() {
-
-        ServerSocket svrSocket = null;
 
         try {
 
@@ -43,25 +45,25 @@ public class ProxyPassConsole implements Runnable {
             logger.info("{} running...", clazzName);
             logger.info("{} port: {}", clazzName, console.getPort());
 
-            svrSocket = new ServerSocket(console.getPort());
+            // Create HttpServer
+            HttpServer server = HttpServer.create(new InetSocketAddress(console.getPort()), 0);
 
-            while (true) {
+            // Create HttpHandler for console commands
+            HttpHandler consoleHandler = new ConsoleHttpHandler(commands, config);
+            
+            // Register handler for all paths
+            server.createContext("/", consoleHandler);
+            
+            // Set executor to use virtual threads
+            server.setExecutor(VThreadExecutor.getExecutor());
+            
+            // Start the server
+            server.start();
+            
+            logger.info("{} HTTP server started on port {}", clazzName, console.getPort());
 
-                Socket socket = svrSocket.accept();
-
-                if (socket == null) continue;
-
-                if (logger.isTraceEnabled()) logger.trace("new pass - h{}", socket.hashCode());
-
-                socket.setSoTimeout(console.getConnectTimeout());
-
-                VThreadExecutor.run(new ConsoleExecutor(socket, commands, config));
-            }
-
-        } catch (Exception e) {
+        } catch (IOException e) {
             logger.error(e.getMessage(), e);
-        } finally {
-            if( svrSocket!=null ) try{ svrSocket.close(); } catch (Exception e){}
         }
     }
 }

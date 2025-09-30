@@ -1,5 +1,6 @@
 package tricatch.gotpache.server;
 
+import java.util.concurrent.Executor;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class VThreadExecutor {
@@ -12,7 +13,10 @@ public class VThreadExecutor {
     }
 
     public static Thread run(Runnable runnable, String name) {
-        long threadNumber = threadCounter.incrementAndGet();
         return Thread.ofVirtual().name(name).start(runnable);
+    }
+
+    public static Executor getExecutor() {
+        return runnable -> Thread.ofVirtual().start(runnable);
     }
 }
