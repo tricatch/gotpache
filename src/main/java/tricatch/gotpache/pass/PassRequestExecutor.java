@@ -25,7 +25,7 @@ import java.net.URL;
 import java.util.List;
 import java.util.concurrent.locks.LockSupport;
 
-public class PassRequestExecutor implements Runnable {
+public class PassRequestExecutor implements Stopable {
 
     private static final Logger logger = LoggerFactory.getLogger(PassRequestExecutor.class);
 
@@ -185,6 +185,7 @@ public class PassRequestExecutor implements Runnable {
         } catch (IOException e) {
             logger.error( uid + ", " + e.getMessage(), e);
         } finally {
+            VThreadExecutor.removeVirtualThread(Thread.currentThread());
             this.stop = true;
             closeAll();
         }
@@ -295,4 +296,14 @@ public class PassRequestExecutor implements Runnable {
         }
     }
 
+    @Override
+    public void stop() {
+        this.closeAll();
+    }
+
+    @Override
+    public String getName() {
+        if( this.thisThread==null ) return null;
+        return thisThread.getName();
+    }
 }

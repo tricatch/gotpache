@@ -6,7 +6,6 @@ import org.slf4j.LoggerFactory;
 import tricatch.gotpache.ProxyPassServer;
 import tricatch.gotpache.cfg.Config;
 import tricatch.gotpache.cfg.attr.Https;
-import tricatch.gotpache.exception.ConfigException;
 import tricatch.gotpache.pass.PassRequestExecutor;
 
 import javax.net.ssl.SSLServerSocket;
@@ -21,7 +20,7 @@ public class SSLPassServer implements Runnable {
     private boolean running = true;
     private SSLServerSocket sslSvrSocket = null;
 
-    public SSLPassServer() throws ConfigException {
+    public SSLPassServer() {
     }
 
     public void stop(){
@@ -73,7 +72,8 @@ public class SSLPassServer implements Runnable {
             }
 
         } catch (Exception e) {
-            logger.error(e.getMessage(), e);
+            if( "Socket closed".equals(e.getMessage()) ) logger.error( "sslPassServer socket closed");
+            else logger.error("errorSslPassServer - " + e.getMessage(), e);
         } finally {
             if( sslSvrSocket!=null ) try{ sslSvrSocket.close(); } catch (Exception e){}
         }

@@ -13,10 +13,7 @@ import tricatch.gotpache.cfg.Config;
 import tricatch.gotpache.cfg.VirtualHost;
 import tricatch.gotpache.cfg.VirtualHostsMap;
 import tricatch.gotpache.exception.ConfigException;
-import tricatch.gotpache.server.ProxyPassConsole;
-import tricatch.gotpache.server.RunState;
-import tricatch.gotpache.server.SSLPassServer;
-import tricatch.gotpache.server.VirtualHosts;
+import tricatch.gotpache.server.*;
 import tricatch.gotpache.util.BrowserUtil;
 import tricatch.gotpache.util.SSLUtil;
 import tricatch.gotpache.util.VirtualHostUtil;
@@ -27,6 +24,7 @@ import java.net.MalformedURLException;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 import java.security.Security;
+import java.util.Map;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadPoolExecutor;
 
@@ -105,6 +103,10 @@ public class ProxyPassServer {
     }
 
     public static void restartSslPassServer() throws ConfigException, InterruptedException {
+
+        logger.info("Restart {}", SSLPassServer.class.getSimpleName());
+
+        VThreadExecutor.stopAll();
 
         if( sslPassServer!=null ){
             sslPassServer.stop();
