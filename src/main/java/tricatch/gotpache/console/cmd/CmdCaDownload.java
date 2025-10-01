@@ -62,7 +62,7 @@ public class CmdCaDownload implements ConsoleCommand {
                             "<p>The CA certificate file <strong>" + certFileName + "</strong> could not be found.</p>" +
                             "<p>This usually means the CA certificate hasn't been generated yet. Please ensure:</p>" +
                             "<ul>" +
-                            "<li>The GotPache server has been started at least once</li>" +
+                            "<li>The Gotpache server has been started at least once</li>" +
                             "<li>SSL/TLS functionality has been initialized</li>" +
                             "<li>The CA certificate generation process has completed</li>" +
                             "</ul>" +

@@ -70,7 +70,7 @@ public class ConsoleHttpHandler implements HttpHandler {
                 
                 // Add client IP to params
                 String clientIp = getClientIp(exchange);
-                params.put("clientIp", clientIp);
+                params.put("__clientIp", clientIp);
 
                 res = cmd.execute(uri, params);
 

@@ -40,8 +40,6 @@ public class PassRequestExecutor implements Runnable {
     private final int connectTimeout;
     private final int readTimeout;
 
-    private VirtualPath virtualPath = null;
-
     private boolean stop = false;
 
     private Thread thisThread = null;
@@ -84,7 +82,6 @@ public class PassRequestExecutor implements Runnable {
         try {
 
             String clientId = this.clientSocket.getInetAddress().getHostAddress();
-            this.virtualHosts = ProxyPassServer.getVirtualHosts(clientId);
 
             if( logger.isDebugEnabled() ){
                 logger.debug( "{}, vtStart / {}", this.uid, clientId );
@@ -98,6 +95,7 @@ public class PassRequestExecutor implements Runnable {
 
                 reqCounter++;
                 this.rid = this.uid + "-" + reqCounter;
+                this.virtualHosts = ProxyPassServer.getVirtualHosts(clientId, false);
 
                 //read-req-header
                 HeaderLines requestHeaders = new HeaderLines(HTTP.INIT_HEADER_LINES);
@@ -132,9 +130,11 @@ public class PassRequestExecutor implements Runnable {
                     );
                 }
 
+                VirtualPath virtualPath = getVirtualPath(rid, httpRequest.getHost(), httpRequest.getPath());
+
                 //create socket - url matched
                 if (serverSocket == null) {
-                    serverSocket = createServerSocket(rid, clientId, httpRequest.getHost(), httpRequest.getPath());
+                    serverSocket = createServerSocket(rid, httpRequest.getHost(), virtualPath);
                     serverIn = new HttpStreamReader(serverSocket.getInputStream(), HTTP.BODY_BUFFER_SIZE);
                     serverOut = new HttpStreamWriter(serverSocket.getOutputStream());
 
@@ -215,10 +215,10 @@ public class PassRequestExecutor implements Runnable {
         clientSocket = null;
     }
 
-    private Socket createServerSocket(String rid, String clientId, String vhost, String uri) throws IOException {
+    private VirtualPath getVirtualPath(String rid, String vhost, String uri) throws IOException {
 
         if( logger.isDebugEnabled() ){
-            logger.debug( "{}, {}, Create Socket, vhost={}, uri={}"
+            logger.debug( "{}, {}, Find virtual path, vhost={}, uri={}"
                     , rid
                     , HttpStream.Flow.REQ
                     , vhost
@@ -229,6 +229,8 @@ public class PassRequestExecutor implements Runnable {
         List<VirtualPath> urls = virtualHosts.get(vhost);
 
         if( urls==null || urls.isEmpty()) throw new IOException( "Undefined vhost - " + vhost );
+
+        VirtualPath virtualPath = null;
 
         for (VirtualPath vu : urls) {
             AntPathMatcher pathMatcher = new AntPathMatcher.Builder().build();
@@ -251,6 +253,20 @@ public class PassRequestExecutor implements Runnable {
         }
 
         if( virtualPath == null ) throw new IOException( "Not found path - " + uri + " -- " + vhost );
+
+        return virtualPath;
+    }
+
+    private Socket createServerSocket(String rid, String vhost, VirtualPath virtualPath) throws IOException {
+
+        if( logger.isDebugEnabled() ){
+            logger.debug( "{}, {}, Create socket, vhost={}, uri={}"
+                    , rid
+                    , HttpStream.Flow.REQ
+                    , vhost
+                    , virtualPath.getTarget()
+            );
+        }
 
         URL target = virtualPath.getTarget();
 

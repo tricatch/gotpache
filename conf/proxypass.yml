@@ -7,6 +7,6 @@ console:
   connectTimeout: 3000
   readTimeout: 30000
 ca:
-  cert: Gotpache Self CA - 250930-1644.cer
-  priKey: Gotpache Self CA - 250930-1644.pfx
+  cert: Gotpache Self CA - 251001-1728.cer
+  priKey: Gotpache Self CA - 251001-1728.pfx
   priPwd: ''

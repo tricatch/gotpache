@@ -8,7 +8,7 @@ public class Config {
     private Console console;
     private Ca ca;
     private String version = "0.6.0";
-    private String serverName = "GotPache Console";
+    private String serverName = "Gotpache Console";
 
     public Https getHttps() {
         return https;

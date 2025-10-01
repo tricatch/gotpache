@@ -15,12 +15,11 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
-import java.util.HashMap;
 import java.util.Map;
 
-public class CmdSettings implements ConsoleCommand {
+public class CmdProxyConfig implements ConsoleCommand {
 
-    private static final Logger logger = LoggerFactory.getLogger(CmdSettings.class);
+    private static final Logger logger = LoggerFactory.getLogger(CmdProxyConfig.class);
 
     @Override
     public ConsoleResponse execute(String uri, Map<String, String> params) {
@@ -29,7 +28,7 @@ public class CmdSettings implements ConsoleCommand {
             Config config = ProxyPassServer.getConfig();
             
             // Get client IP from request
-            String clientIp = getClientIp(params);
+            String clientIp = params.get("__clientIp");
             String fileName = "virtual-host-" + clientIp + ".yml";
             String confDir = "conf/vhost";
             Path confPath = Paths.get(confDir);
@@ -73,16 +72,5 @@ public class CmdSettings implements ConsoleCommand {
                 return null;
             }
         }
-    }
-    
-    private String getClientIp(Map<String, String> params) {
-        // Get client IP from server-provided parameter
-        String clientIp = params.get("clientIp");
-        if (clientIp != null && !clientIp.isEmpty()) {
-            return clientIp;
-        }
-        
-        // Fallback to localhost if no IP provided
-        return "127.0.0.1";
     }
 }

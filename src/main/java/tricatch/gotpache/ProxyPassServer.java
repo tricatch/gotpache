@@ -14,6 +14,7 @@ import tricatch.gotpache.cfg.VirtualHost;
 import tricatch.gotpache.cfg.VirtualHostsMap;
 import tricatch.gotpache.exception.ConfigException;
 import tricatch.gotpache.server.ProxyPassConsole;
+import tricatch.gotpache.server.RunState;
 import tricatch.gotpache.server.SSLPassServer;
 import tricatch.gotpache.server.VirtualHosts;
 import tricatch.gotpache.util.BrowserUtil;
@@ -23,6 +24,8 @@ import tricatch.gotpache.util.VirtualHostUtil;
 import javax.net.ssl.SSLContext;
 import java.io.*;
 import java.net.MalformedURLException;
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
 import java.security.Security;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadPoolExecutor;
@@ -38,7 +41,8 @@ public class ProxyPassServer {
 
     private static VirtualHostsMap virtualHostsMap = new VirtualHostsMap();
     private static Config config = null;
-    private static SSLContext sslContext;
+    private static SSLContext sslContext = null;
+    private static SSLPassServer sslPassServer = null;
 
     public static void main(String[] args) {
 
@@ -48,20 +52,25 @@ public class ProxyPassServer {
 
             initConfig();
 
+            serverExecutor.execute(new ProxyPassConsole());
+
+            boolean startedSslPassServer = false;
             try {
                 initSslContext();
+                restartSslPassServer();
+                startedSslPassServer = true;
             } catch (ConfigException e) {
                 logger.warn("SSL server initialization failed: {}. CA certificate may need to be generated.", e.getMessage());
-                BrowserUtil.openUrl("http://127.0.0.1:" + config.getConsole().getPort() + "/ca/generate");
+
             }
 
-            serverExecutor.execute(new SSLPassServer());
-            serverExecutor.execute(new ProxyPassConsole());
+            if( !startedSslPassServer ){
+                BrowserUtil.openUrl("http://127.0.0.1:" + config.getConsole().getPort() + "/ca/generate");
+            }
 
         } catch (Exception e) {
             logger.error(e.getMessage(), e);
         }
-
     }
 
     public static void initConfig() throws FileNotFoundException {
@@ -95,11 +104,29 @@ public class ProxyPassServer {
         }
     }
 
-    public static VirtualHosts getVirtualHosts(String clientId) throws FileNotFoundException, MalformedURLException {
+    public static void restartSslPassServer() throws ConfigException, InterruptedException {
+
+        if( sslPassServer!=null ){
+            sslPassServer.stop();
+            for(int i=0;i<100;i++){
+                Thread.sleep(1000);
+                RunState runState = sslPassServer.getRunState();
+                if( RunState.STOPPED == runState ){
+                    break;
+                }
+            }
+            sslPassServer = null;
+        }
+
+        sslPassServer = new SSLPassServer();
+        serverExecutor.execute(sslPassServer);
+    }
+
+    public static VirtualHosts getVirtualHosts(String clientId, boolean reload) throws IOException {
 
         VirtualHosts virtualHosts = virtualHostsMap.get(clientId);
 
-        if (virtualHosts != null) return virtualHosts;
+        if (virtualHosts != null && !reload) return virtualHosts;
 
         Representer representer = new Representer(new DumperOptions());
         representer.getPropertyUtils().setSkipMissingProperties(true);
@@ -108,13 +135,22 @@ public class ProxyPassServer {
         Constructor constructorVirtualHost = new Constructor(VirtualHost.class, loaderOptions);
         Yaml yamlVirtualHost = new Yaml(constructorVirtualHost, representer);
 
-        File vhFile = new File(VHOST_DIR + "/virtual-host.yml"); // default
+        File vhClientFile = new File(VHOST_DIR + "/virtual-host-" + clientId + ".yml");
 
-        VirtualHost virtualHost = yamlVirtualHost.load(new FileInputStream(vhFile));
+        if( !vhClientFile.exists() ) {
+            File vhDefaultFile = new File(VHOST_DIR + "/virtual-host.yml"); // default
+            Files.copy(vhDefaultFile.toPath(), vhClientFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
+        }
+
+        VirtualHost virtualHost = yamlVirtualHost.load(new FileInputStream(vhClientFile));
 
         virtualHosts = VirtualHostUtil.convert(virtualHost.getVirtual());
 
+        virtualHostsMap.remove(clientId);
         virtualHostsMap.put(clientId, virtualHosts);
+        if( reload ){
+            logger.info( "Reloaded virtual hosts for client {}", clientId );
+        }
 
         return virtualHosts;
     }
@@ -125,20 +161,5 @@ public class ProxyPassServer {
     public static SSLContext getSslContext(){
         return sslContext;
     }
-    
-    /**
-     * Restart SSL context by reinitializing it
-     * @return true if restart was successful, false otherwise
-     */
-    public static boolean restartSslContext() {
-        try {
-            logger.info("Restarting SSL context...");
-            initSslContext();
-            logger.info("SSL context restarted successfully");
-            return true;
-        } catch (Exception e) {
-            logger.error("Failed to restart SSL context", e);
-            return false;
-        }
-    }
+
 }

@@ -12,8 +12,8 @@ import tricatch.gotpache.console.cmd.CmdWelcome;
 import tricatch.gotpache.console.cmd.CmdCaDownload;
 import tricatch.gotpache.console.cmd.CmdCaGenerate;
 import tricatch.gotpache.console.cmd.CmdCaCreate;
-import tricatch.gotpache.console.cmd.CmdSettings;
-import tricatch.gotpache.console.cmd.CmdSettingsSave;
+import tricatch.gotpache.console.cmd.CmdProxyConfig;
+import tricatch.gotpache.console.cmd.CmdProxyConfigsSave;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -30,8 +30,8 @@ public class ProxyPassConsole implements Runnable {
 
         commands.put("/", new CmdWelcome());
         commands.put("/welcome", new CmdWelcome());
-        commands.put("/proxyconfig", new CmdSettings());
-        commands.put("/proxyconfig/save", new CmdSettingsSave());
+        commands.put("/proxyconfig", new CmdProxyConfig());
+        commands.put("/proxyconfig/save", new CmdProxyConfigsSave());
         commands.put("/ca/download", new CmdCaDownload());
         commands.put("/ca/generate", new CmdCaGenerate());
         commands.put("/ca/create", new CmdCaCreate());

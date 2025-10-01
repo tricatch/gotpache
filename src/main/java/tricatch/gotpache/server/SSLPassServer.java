@@ -17,19 +17,32 @@ public class SSLPassServer implements Runnable {
 
     private static final Logger logger = LoggerFactory.getLogger(SSLPassServer.class);
 
+    private RunState runState = RunState.INIT;
+    private boolean running = true;
+    private SSLServerSocket sslSvrSocket = null;
+
     public SSLPassServer() throws ConfigException {
+    }
+
+    public void stop(){
+        this.running = false;
+        if( this.sslSvrSocket!=null ) try{ this.sslSvrSocket.close(); }catch (Exception e){}
+    }
+
+    public RunState getRunState(){
+
+        return this.runState;
     }
 
     public void run() {
 
-        SSLServerSocket sslSvrSocket = null;
         Config config = ProxyPassServer.getConfig();
+        String clazzName = this.getClass().getSimpleName();
 
         try {
 
             Thread.currentThread().setName("pt-https-pass");
 
-            String clazzName = this.getClass().getSimpleName();
             Https https = config.getHttps();
 
             logger.info("{} running...", clazzName);
@@ -41,7 +54,10 @@ public class SSLPassServer implements Runnable {
             sslSvrSocket = (SSLServerSocket) ssf.createServerSocket(https.getPort());
             sslSvrSocket.setEnabledProtocols(new String[] { "TLSv1.2", "TLSv1.3" });
 
-            while (true) {
+            this.running = true;
+            this.runState = RunState.RUNNING;
+
+            while (running) {
 
                 Socket socket = sslSvrSocket.accept();
 
@@ -61,5 +77,8 @@ public class SSLPassServer implements Runnable {
         } finally {
             if( sslSvrSocket!=null ) try{ sslSvrSocket.close(); } catch (Exception e){}
         }
+
+        this.runState = RunState.STOPPED;
+        logger.info("{} stopped...", clazzName);
     }
 }

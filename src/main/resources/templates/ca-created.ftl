@@ -108,7 +108,7 @@
                             <ol class="uk-list uk-list-bullet uk-text-left">
                                 <li><strong>Download CA Certificate:</strong> Click the button below to download the CA certificate.</li>
                                 <li><strong>Install in Browser:</strong> Add the downloaded certificate to your browser's trusted root authorities.</li>
-                                <li><strong>Restart Server:</strong> Restart the GotPache server to apply the new SSL configuration.</li>
+                                <li><strong>Restart Server:</strong> Restart the Gotpache server to apply the new SSL configuration.</li>
                                 <li><strong>Test HTTPS:</strong> Access HTTPS sites to verify that the proxy is working correctly.</li>
                             </ol>
                         </div>

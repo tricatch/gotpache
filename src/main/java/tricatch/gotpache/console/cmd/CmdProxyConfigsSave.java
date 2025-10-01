@@ -2,9 +2,12 @@ package tricatch.gotpache.console.cmd;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import tricatch.gotpache.ProxyPassServer;
 import tricatch.gotpache.console.ConsoleCommand;
 import tricatch.gotpache.console.ConsoleResponse;
 import tricatch.gotpache.console.ConsoleResponseBuilder;
+import tricatch.gotpache.server.VirtualHosts;
+import tricatch.gotpache.util.JsonUtil;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -12,33 +15,18 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Map;
 
-public class CmdSettingsSave implements ConsoleCommand {
+public class CmdProxyConfigsSave implements ConsoleCommand {
 
-    private static final Logger logger = LoggerFactory.getLogger(CmdSettingsSave.class);
+    private static final Logger logger = LoggerFactory.getLogger(CmdProxyConfigsSave.class);
 
     @Override
     public ConsoleResponse execute(String uri, Map<String, String> params) {
 
         try {
-            String fileName = params.get("fileName");
+            String clientIp = params.get("__clientIp");
+            String fileName = "virtual-host-" + clientIp + ".yml";
             String content = params.get("content");
-            String clientIp = params.get("clientIp");
-            
-            if (fileName == null || content == null) {
-                return ConsoleResponseBuilder.error("Missing fileName or content parameter");
-            }
-            
-            // Security check: ensure the file name matches the client IP
-            if (!fileName.startsWith("virtual-host-") || !fileName.endsWith(".yml")) {
-                return ConsoleResponseBuilder.error("Invalid file name format");
-            }
-            
-            // Extract IP from filename and verify it matches client IP
-            String fileIp = fileName.substring("virtual-host-".length(), fileName.length() - ".yml".length());
-            if (!fileIp.equals(clientIp)) {
-                return ConsoleResponseBuilder.error("Access denied: Cannot modify other IP's configuration");
-            }
-            
+
             String confDir = "conf/vhost";
             Path confPath = Paths.get(confDir);
             Path targetFile = confPath.resolve(fileName);
@@ -50,9 +38,13 @@ public class CmdSettingsSave implements ConsoleCommand {
             
             // Write content to file
             Files.write(targetFile, content.getBytes());
-            
+
             logger.info("Saved virtual host file: {}", targetFile);
-            
+
+            VirtualHosts virtualHosts = ProxyPassServer.getVirtualHosts(clientIp, true);
+            if( logger.isDebugEnabled() ) logger.debug( "virtualHosts, client={}\n{}", clientIp, JsonUtil.pretty(virtualHosts));
+
+
             // Return JSON response
             String jsonResponse = "{\"success\": true, \"message\": \"File saved successfully\"}";
             return ConsoleResponseBuilder.ok(jsonResponse, "application/json");

@@ -111,9 +111,10 @@ public class CmdCaCreate implements ConsoleCommand {
                 logger.info("Reloading configuration and SSL context...");
                 ProxyPassServer.initConfig();
                 ProxyPassServer.initSslContext();
-                logger.info("Configuration and SSL context reloaded successfully");
+                ProxyPassServer.restartSslPassServer();
+                logger.info("Configuration and SSL server restarted successfully");
             } catch (Exception reloadException) {
-                logger.error("Failed to reload configuration and SSL context", reloadException);
+                logger.error("Failed to reload configuration and SSL server", reloadException);
                 // Continue with response even if reload fails
             }
 
