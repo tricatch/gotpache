@@ -3,7 +3,7 @@ plugins {
 }
 
 group = 'tricatch'
-version = '0.5.2'
+version = '0.6.0'
 
 java {
     toolchain {
@@ -37,8 +37,18 @@ tasks.register('copyAllDependencies', Copy) {
 
 tasks.register('copyAllProerties', Copy) {
     dependsOn(copyAllDependencies)
-    from "conf/proxypass.yml"
+    from("conf/proxypass.yml") {
+        filter { line -> 
+            if (line.trim().startsWith('cert:') || line.trim().startsWith('prikey:') || line.trim().startsWith('priKey:')) {
+                return line.substring(0, line.indexOf(':') + 1) + '\n'
+            }
+            return line
+        }
+    }
     from "conf/simplelogger.properties"
+    from("conf/vhost/virtual-host.yml") {
+        into "vhost"
+    }
     into layout.buildDirectory.dir('dist/conf')
 }
 
