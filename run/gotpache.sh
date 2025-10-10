@@ -1,1 +1,1 @@
-$JAVA_HOME/bin/java -cp .:./libs/*: tricatch.gotpache.ProxyPassServer
+java -cp .:./libs/*: tricatch.gotpache.ProxyPassServer

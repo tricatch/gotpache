@@ -1,99 +1,62 @@
 package tricatch.gotpache.server;
 
-import io.github.tricatch.gotpache.cert.KeyTool;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import tricatch.gotpache.cert.MultiDomainCertKeyManager;
+import tricatch.gotpache.ProxyPassServer;
 import tricatch.gotpache.cfg.Config;
-import tricatch.gotpache.cfg.attr.Ca;
 import tricatch.gotpache.cfg.attr.Https;
-import tricatch.gotpache.exception.ConfigException;
 import tricatch.gotpache.pass.PassRequestExecutor;
 
-import javax.net.ssl.KeyManager;
-import javax.net.ssl.SSLContext;
-import javax.net.ssl.SSLEngine;
 import javax.net.ssl.SSLServerSocket;
 import javax.net.ssl.SSLServerSocketFactory;
-import javax.net.ssl.TrustManager;
-import javax.net.ssl.TrustManagerFactory;
 import java.net.Socket;
-import java.security.KeyStore;
-import java.security.PrivateKey;
-import java.security.cert.X509Certificate;
 
-public class SSLPassServer extends AbstractServer {
+public class SSLPassServer implements Runnable {
 
     private static final Logger logger = LoggerFactory.getLogger(SSLPassServer.class);
 
-    private SSLContext sslContext;
+    private RunState runState = RunState.INIT;
+    private boolean running = true;
+    private SSLServerSocket sslSvrSocket = null;
 
-
-    public SSLPassServer(Config config, VirtualHosts virtualHosts) throws ConfigException {
-        super(config, virtualHosts);
+    public SSLPassServer() {
     }
 
-    @Override
-    public void conifg() throws ConfigException {
+    public void stop(){
+        this.running = false;
+        if( this.sslSvrSocket!=null ) try{ this.sslSvrSocket.close(); }catch (Exception e){}
+    }
 
-        try {
+    public RunState getRunState(){
 
-            Ca ca = config.getCa();
-
-            KeyTool keyTool = new KeyTool();
-            X509Certificate rootCertificate = keyTool.readCertificate("./conf", ca.getCert());
-            PrivateKey rootPrivateKey;
-
-            if( config.getCa().getPriPwd()!=null && !ca.getPriPwd().trim().isEmpty() ){
-                rootPrivateKey = keyTool.readPrivateKey("./conf", ca.getPriKey(), ca.getPriPwd().trim());
-            } else {
-                rootPrivateKey = keyTool.readPrivateKey("./conf", ca.getPriKey());
-            }
-
-        	KeyStore ks = KeyStore.getInstance(KeyStore.getDefaultType());
-        	
-            KeyManager[] kms = new KeyManager[]{
-                    new MultiDomainCertKeyManager(rootCertificate, rootPrivateKey)
-            };
-
-            TrustManagerFactory tmf = TrustManagerFactory.getInstance("SunX509");
-            tmf.init(ks);
-            
-            TrustManager[] tms = tmf.getTrustManagers();
-
-            this.sslContext = SSLContext.getInstance("TLS");
-            this.sslContext.init(kms, tms, null);
-
-            SSLEngine engine = this.sslContext.createSSLEngine();
-            engine.setUseClientMode(false);
-
-        }catch(Exception e){
-            throw new ConfigException( "ssl config error - " + e.getMessage(), e );
-        }
+        return this.runState;
     }
 
     public void run() {
 
-        SSLServerSocket sslSvrSocket = null;
+        Config config = ProxyPassServer.getConfig();
+        String clazzName = this.getClass().getSimpleName();
 
         try {
 
             Thread.currentThread().setName("pt-https-pass");
 
-            String clazzName = this.getClass().getSimpleName();
-            Https https = this.config.getHttps();
+            Https https = config.getHttps();
 
             logger.info("{} running...", clazzName);
             logger.info("{} port: {}", clazzName, https.getPort());
             logger.info("{} client.connect.timeout: {}", clazzName, https.getConnectTimeout() );
             logger.info("{} client.read.timeout: {}", clazzName, https.getReadTimeout() );
 
-            SSLServerSocketFactory ssf = this.sslContext.getServerSocketFactory();
+            SSLServerSocketFactory ssf = ProxyPassServer.getSslContext().getServerSocketFactory();
             sslSvrSocket = (SSLServerSocket) ssf.createServerSocket(https.getPort());
             sslSvrSocket.setEnabledProtocols(new String[] { "TLSv1.2", "TLSv1.3" });
 
-            while (true) {
+            this.running = true;
+            this.runState = RunState.RUNNING;
+
+            while (running) {
 
                 Socket socket = sslSvrSocket.accept();
 
@@ -105,13 +68,17 @@ public class SSLPassServer extends AbstractServer {
 
                 socket.setSoTimeout(https.getReadTimeout());
 
-                VThreadExecutor.run(new PassRequestExecutor(socket, this.virtualHosts, https.getConnectTimeout(), https.getReadTimeout()));
+                VThreadExecutor.run(new PassRequestExecutor(socket, https.getConnectTimeout(), https.getReadTimeout()));
             }
 
         } catch (Exception e) {
-            logger.error(e.getMessage(), e);
+            if( "Socket closed".equals(e.getMessage()) ) logger.error( "sslPassServer socket closed");
+            else logger.error("errorSslPassServer - " + e.getMessage(), e);
         } finally {
             if( sslSvrSocket!=null ) try{ sslSvrSocket.close(); } catch (Exception e){}
         }
+
+        this.runState = RunState.STOPPED;
+        logger.info("{} stopped...", clazzName);
     }
 }

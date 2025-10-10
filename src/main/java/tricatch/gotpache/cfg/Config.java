@@ -2,25 +2,13 @@ package tricatch.gotpache.cfg;
 
 import tricatch.gotpache.cfg.attr.*;
 
-import java.util.List;
-
 public class Config {
 
-    private Http http;
     private Https https;
     private Console console;
     private Ca ca;
-
-    private String localDomainIP;
-    private List<VirtualDomain> virtual;
-
-    public Http getHttp() {
-        return http;
-    }
-
-    public void setHttp(Http http) {
-        this.http = http;
-    }
+    private String version = "0.6.0";
+    private String serverName = "Gotpache Console";
 
     public Https getHttps() {
         return https;
@@ -46,19 +34,19 @@ public class Config {
         this.ca = ca;
     }
 
-    public String getLocalDomainIP() {
-        return localDomainIP;
+    public String getVersion() {
+        return version;
     }
 
-    public void setLocalDomainIP(String localDomainIP) {
-        this.localDomainIP = localDomainIP;
+    public void setVersion(String version) {
+        this.version = version;
     }
 
-    public List<VirtualDomain> getVirtual() {
-        return virtual;
+    public String getServerName() {
+        return serverName;
     }
 
-    public void setVirtual(List<VirtualDomain> virtual) {
-        this.virtual = virtual;
+    public void setServerName(String serverName) {
+        this.serverName = serverName;
     }
 }

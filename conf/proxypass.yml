@@ -1,40 +1,12 @@
-http:
-  port: 80
-  connectTimeout: 3000
-  readTimeout: 30000
-
 https:
   port: 443
   connectTimeout: 3000
   readTimeout: 30000
-
 console:
   port: 36912
   connectTimeout: 3000
   readTimeout: 30000
-
 ca:
-  cert: Gotpache ProxyPass CA-foo.cer
-  priKey: Gotpache ProxyPass CA-foo.pfx
-  priPwd:
-  download: /gotca.cer
-
-localDomainIP: 127.0.0.1
-
-virtual:
-  - domain: foo.kr
-    location:
-      - { host: http://127.0.0.1:8888, path: [ /** ] }
-      - { host: http://127.0.0.1:9999, path: [ /img/**, /js/** ] }
-
-  - domain: api-foo.kr
-    location:
-      - { host: http://127.0.0.1:7777, path: [ /** ] }
-
-  - domain: goo.kr
-    location:
-      - { host: http://127.0.0.1:8899, path: [ /** ], header: [ "Content-Security-Policy: frame-ancestors 'self' https://foo.kr", "--ETag" ] }
-
-  - domain: webtest.kr
-    location:
-      - { host: http://127.0.0.1:8989, path: [ /** ] }
+  cert: Gotpache Self CA - 251001-2141.cer
+  priKey: Gotpache Self CA - 251001-2141.pfx
+  priPwd: ''

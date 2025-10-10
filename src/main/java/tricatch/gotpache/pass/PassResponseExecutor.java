@@ -4,17 +4,19 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import tricatch.gotpache.http.HTTP;
 import tricatch.gotpache.http.io.*;
+import tricatch.gotpache.server.VThreadExecutor;
 
 import java.io.IOException;
 import java.net.SocketException;
 import java.net.SocketTimeoutException;
 import java.util.concurrent.locks.LockSupport;
 
-public class PassResponseExecutor implements Runnable {
+public class PassResponseExecutor implements Stopable {
 
     private static final Logger logger = LoggerFactory.getLogger(PassResponseExecutor.class);
 
     private PassRequestExecutor passRequestExecutor;
+    private Thread thisThread = null;
 
     private HttpStreamWriter clientOut = null;
     private HttpStreamReader serverIn = null;
@@ -35,6 +37,8 @@ public class PassResponseExecutor implements Runnable {
         int bytesRead;
 
         try {
+
+            this.thisThread = Thread.currentThread();
 
             if( logger.isDebugEnabled() ){
                 logger.debug( "{}, vtStart", this.passRequestExecutor.getUid() );
@@ -105,6 +109,9 @@ public class PassResponseExecutor implements Runnable {
         } catch (IOException e) {
             logger.error( this.passRequestExecutor.getUid() + ", " + e.getMessage(), e);
         } finally {
+
+            VThreadExecutor.removeVirtualThread(Thread.currentThread());
+
             if( logger.isDebugEnabled() ){
                 logger.debug( "{}, vtEnd", this.passRequestExecutor.getUid() );
             }
@@ -112,5 +119,16 @@ public class PassResponseExecutor implements Runnable {
             LockSupport.unpark(this.passRequestExecutor.getThread());
         }
 
+    }
+
+    @Override
+    public void stop() {
+
+    }
+
+    @Override
+    public String getName() {
+        if( this.thisThread==null ) return null;
+        return thisThread.getName();
     }
 }
