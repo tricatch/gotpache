@@ -11,6 +11,13 @@ apache/nginx의 복잡한 기능을 가지고 있지 않지만, ProxyPass와 유
 
 ### Release Note
 
+#### v0.6.0
+* console ui 추가
+  * ROOT 인증서 생성
+  * 라우팅 설정
+* 서버모드 추가
+  * 로컬이 아닌 서버에서 실행가능하도록 수정
+  * 개발자 client-ip 별로 라우팅 설정 가능
 
 #### v0.5.2
 * fixed default port
