@@ -76,6 +76,13 @@ apache/nginx의 복잡한 기능을 가지고 있지 않지만, ProxyPass와 유
 <br>
 <br>
 
+## CONSOLE
+* http://{127.0.0.1 or ip}:36912
+<img src="https://velog.velcdn.com/images/tricatch/post/81d82e82-6caa-46bc-9bd8-3319894dc534/image.png" />
+
+<br>
+<br>
+
 ## 로컬 HTTPS 구성
 * https://velog.io/@tricatch/posts
 * 로컬 개발환경
