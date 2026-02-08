@@ -11,6 +11,9 @@ import tricatch.gotpache.http.io.HeaderLines;
 import tricatch.gotpache.http.io.HttpRequest;
 import tricatch.gotpache.http.io.HttpStreamReader;
 import tricatch.gotpache.http.io.HttpStreamWriter;
+import tricatch.gotpache.event.HttpEvent;
+import tricatch.gotpache.event.HttpEventManager;
+import tricatch.gotpache.event.HttpEventType;
 import tricatch.gotpache.server.VThreadExecutor;
 import tricatch.gotpache.server.VirtualHosts;
 import tricatch.gotpache.server.VirtualPath;
@@ -49,6 +52,7 @@ public class PassRequestExecutor implements Stopable {
     private String rid = uid;
     private int reqCounter = 0;
     private VirtualHosts virtualHosts = null;
+    private String clientId = null;
 
     public PassRequestExecutor(Socket clientSocket, int connectTimeout, int readTimeout){
 
@@ -71,6 +75,10 @@ public class PassRequestExecutor implements Stopable {
     public String getRid(){
         return this.rid;
     }
+    
+    public String getClientId(){
+        return this.clientId;
+    }
 
     public Thread getThread(){
         return this.thisThread;
@@ -81,10 +89,10 @@ public class PassRequestExecutor implements Stopable {
 
         try {
 
-            String clientId = this.clientSocket.getInetAddress().getHostAddress();
+            this.clientId = this.clientSocket.getInetAddress().getHostAddress();
 
             if( logger.isDebugEnabled() ){
-                logger.debug( "{}, vtStart / {}", this.uid, clientId );
+                logger.debug( "{}, vtStart / {}", this.uid, this.clientId );
             }
 
             thisThread = Thread.currentThread();
@@ -95,7 +103,7 @@ public class PassRequestExecutor implements Stopable {
 
                 reqCounter++;
                 this.rid = this.uid + "-" + reqCounter;
-                this.virtualHosts = ProxyPassServer.getVirtualHosts(clientId, false);
+                this.virtualHosts = ProxyPassServer.getVirtualHosts(this.clientId, false);
 
                 //read-req-header
                 HeaderLines requestHeaders = new HeaderLines(HTTP.INIT_HEADER_LINES);
@@ -107,6 +115,11 @@ public class PassRequestExecutor implements Stopable {
                     );
                     return;
                 }
+
+                // Enqueue REQ header HTTP event
+                HttpEvent reqHeaderEvent = new HttpEvent(this.clientId, this.rid, HttpEventType.REQ_HEADER);
+                reqHeaderEvent.setHeaders(requestHeaders);
+                HttpEventManager.getInstance().enqueue(reqHeaderEvent);
 
                 // Parse HTTP request
                 HttpRequest httpRequest = requestHeaders.parseHttpRequest();
@@ -153,7 +166,7 @@ public class PassRequestExecutor implements Stopable {
                 }
 
                 // Relay request body to server if exists
-                HttpStream.Connection connection = RelayBody.relayRequestBody(rid, HttpStream.Flow.REQ, httpRequest, clientIn, serverOut);
+                HttpStream.Connection connection = RelayBody.relayRequestBody(this.clientId, rid, HttpStream.Flow.REQ, httpRequest, clientIn, serverOut);
                 if (connection == HttpStream.Connection.CLOSE) {
                     this.stop = true;
                 }

@@ -8,6 +8,9 @@ import tricatch.gotpache.http.io.HttpStream;
 import tricatch.gotpache.http.io.ByteBuffer;
 import tricatch.gotpache.http.io.HttpStreamReader;
 import tricatch.gotpache.http.io.HttpStreamWriter;
+import tricatch.gotpache.event.HttpEvent;
+import tricatch.gotpache.event.HttpEventManager;
+import tricatch.gotpache.event.HttpEventType;
 
 import java.io.IOException;
 
@@ -20,6 +23,7 @@ public class RelayChunked {
     
     /**
      * Relay chunked transfer encoding response body
+     * @param clientId Client identifier
      * @param rid Request ID for logging
      * @param flow Body stream flow direction (REQ/RES)
      * @param in Input stream reader
@@ -27,7 +31,7 @@ public class RelayChunked {
      * @return HttpStream.Connection indicating whether connection should be closed
      * @throws IOException when I/O error occurs
      */
-    public static HttpStream.Connection relay(String rid, HttpStream.Flow flow, HttpStreamReader in, HttpStreamWriter out) throws IOException {
+    public static HttpStream.Connection relay(String clientId, String rid, HttpStream.Flow flow, HttpStreamReader in, HttpStreamWriter out) throws IOException {
         if (logger.isDebugEnabled()) {
             logger.debug("{}, {}, Relaying chunked body"
                     , rid
@@ -38,6 +42,7 @@ public class RelayChunked {
         ByteBuffer chunkSizeBuffer = new ByteBuffer(HTTP.CHUNK_SIZE_LINE_LENGTH);
         ByteBuffer chunkTrailerBuffer = new ByteBuffer(HTTP.CHUNK_SIZE_LINE_LENGTH);
         byte[] chunkBodyBuffer = new byte[HTTP.BODY_BUFFER_SIZE];
+        java.io.ByteArrayOutputStream bodyCollector = new java.io.ByteArrayOutputStream();
         
         while (true) {
             // Read chunk size line
@@ -137,6 +142,9 @@ public class RelayChunked {
                 }
                 out.write(chunkBodyBuffer, 0, bytesRead);
                 out.flush();
+                
+                // Collect body data for logging
+                bodyCollector.write(chunkBodyBuffer, 0, bytesRead);
 
                 remainingBytes -= bytesRead;
                 
@@ -163,6 +171,13 @@ public class RelayChunked {
         }
         
         out.flush();
+        
+        // Enqueue body HTTP event
+        HttpEvent bodyEvent = new HttpEvent(clientId, rid, 
+            flow == HttpStream.Flow.REQ ? HttpEventType.REQ_BODY : HttpEventType.RES_BODY);
+        bodyEvent.setBody(bodyCollector.toByteArray());
+        bodyEvent.setHttpStream(HttpStream.CHUNKED);
+        HttpEventManager.getInstance().enqueue(bodyEvent);
 
         if (logger.isDebugEnabled()) {
             logger.debug("{}, {}, Chunked body relay completed"
