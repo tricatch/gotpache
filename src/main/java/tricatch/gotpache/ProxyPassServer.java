@@ -20,11 +20,9 @@ import tricatch.gotpache.util.VirtualHostUtil;
 
 import javax.net.ssl.SSLContext;
 import java.io.*;
-import java.net.MalformedURLException;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 import java.security.Security;
-import java.util.Map;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadPoolExecutor;
 
