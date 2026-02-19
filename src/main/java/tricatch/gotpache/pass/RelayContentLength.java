@@ -9,6 +9,9 @@ import tricatch.gotpache.http.io.HttpRequest;
 import tricatch.gotpache.http.io.HttpResponse;
 import tricatch.gotpache.http.io.HttpStreamReader;
 import tricatch.gotpache.http.io.HttpStreamWriter;
+import tricatch.gotpache.event.HttpEvent;
+import tricatch.gotpache.event.HttpEventManager;
+import tricatch.gotpache.event.HttpEventType;
 
 import java.io.IOException;
 
@@ -21,6 +24,7 @@ public class RelayContentLength {
     
     /**
      * Relay content-length based response body
+     * @param clientId Client identifier
      * @param rid Request ID for logging
      * @param flow Body stream flow direction (REQ/RES)
      * @param response HTTP response
@@ -29,7 +33,7 @@ public class RelayContentLength {
      * @return HttpStream.Connection indicating whether connection should be closed
      * @throws IOException when I/O error occurs
      */
-    public static HttpStream.Connection relay(String rid, HttpStream.Flow flow, HttpResponse response, HttpStreamReader in, HttpStreamWriter out) throws IOException {
+    public static HttpStream.Connection relay(String clientId, String rid, HttpStream.Flow flow, HttpResponse response, HttpStreamReader in, HttpStreamWriter out) throws IOException {
         Integer contentLength = response.getContentLength();
         if (contentLength == null || contentLength <= 0) {
             if (logger.isDebugEnabled()) {
@@ -93,6 +97,7 @@ public class RelayContentLength {
     
     /**
      * Relay content-length based request body
+     * @param clientId Client identifier
      * @param rid Request ID for logging
      * @param flow Body stream flow direction (REQ/RES)
      * @param request HTTP request
@@ -101,7 +106,7 @@ public class RelayContentLength {
      * @return HttpStream.Connection indicating whether connection should be closed
      * @throws IOException when I/O error occurs
      */
-    public static HttpStream.Connection relay(String rid, HttpStream.Flow flow, HttpRequest request, HttpStreamReader in, HttpStreamWriter out) throws IOException {
+    public static HttpStream.Connection relay(String clientId, String rid, HttpStream.Flow flow, HttpRequest request, HttpStreamReader in, HttpStreamWriter out) throws IOException {
         Integer contentLength = request.getContentLength();
         if (contentLength == null || contentLength <= 0) {
             if (logger.isDebugEnabled()) {
@@ -123,6 +128,7 @@ public class RelayContentLength {
         
         byte[] buffer = new byte[HTTP.BODY_BUFFER_SIZE];
         int remainingBytes = contentLength;
+        java.io.ByteArrayOutputStream bodyCollector = new java.io.ByteArrayOutputStream(contentLength);
         
         while (remainingBytes > 0) {
             int bytesToRead = Math.min(buffer.length, remainingBytes);
@@ -138,6 +144,9 @@ public class RelayContentLength {
             
             out.write(buffer, 0, bytesRead);
             out.flush();
+            
+            // Collect body data for logging
+            bodyCollector.write(buffer, 0, bytesRead);
 
             remainingBytes -= bytesRead;
             
@@ -152,6 +161,12 @@ public class RelayContentLength {
         }
         
         out.flush();
+        
+        // Enqueue body HTTP event
+        HttpEvent bodyEvent = new HttpEvent(clientId, rid, HttpEventType.REQ_BODY);
+        bodyEvent.setBody(bodyCollector.toByteArray());
+        bodyEvent.setHttpStream(HttpStream.CONTENT_LENGTH);
+        HttpEventManager.getInstance().enqueue(bodyEvent);
 
         if (logger.isDebugEnabled()) {
             logger.debug("{}, {}, Content-length body relay completed"

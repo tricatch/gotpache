@@ -1,7 +1,5 @@
 package tricatch.gotpache.console;
 
-import tricatch.gotpache.cfg.Config;
-
 import java.io.IOException;
 import java.util.Map;
 

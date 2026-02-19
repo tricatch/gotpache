@@ -11,6 +11,9 @@ import tricatch.gotpache.http.io.HeaderLines;
 import tricatch.gotpache.http.io.HttpRequest;
 import tricatch.gotpache.http.io.HttpStreamReader;
 import tricatch.gotpache.http.io.HttpStreamWriter;
+import tricatch.gotpache.event.HttpEvent;
+import tricatch.gotpache.event.HttpEventManager;
+import tricatch.gotpache.event.HttpEventType;
 import tricatch.gotpache.server.VThreadExecutor;
 import tricatch.gotpache.server.VirtualHosts;
 import tricatch.gotpache.server.VirtualPath;
@@ -36,6 +39,7 @@ public class PassRequestExecutor implements Stopable {
     private Socket serverSocket = null;
     private HttpStreamReader serverIn = null;
     private HttpStreamWriter serverOut = null;
+    private VirtualPath preVirtualPath = null;
 
     private final int connectTimeout;
     private final int readTimeout;
@@ -43,12 +47,13 @@ public class PassRequestExecutor implements Stopable {
     private boolean stop = false;
 
     private Thread thisThread = null;
-    private Thread child = null;
+    private volatile Thread child = null;
 
     private final String uid = SysUtil.generateRequestId();
     private String rid = uid;
     private int reqCounter = 0;
     private VirtualHosts virtualHosts = null;
+    private String clientId = null;
 
     public PassRequestExecutor(Socket clientSocket, int connectTimeout, int readTimeout){
 
@@ -65,11 +70,19 @@ public class PassRequestExecutor implements Stopable {
         return this.stop;
     }
 
+    public Thread getChildThread(){
+        return this.child;
+    }
+
     public String getUid(){
         return this.uid;
     }
     public String getRid(){
         return this.rid;
+    }
+    
+    public String getClientId(){
+        return this.clientId;
     }
 
     public Thread getThread(){
@@ -81,10 +94,10 @@ public class PassRequestExecutor implements Stopable {
 
         try {
 
-            String clientId = this.clientSocket.getInetAddress().getHostAddress();
+            this.clientId = this.clientSocket.getInetAddress().getHostAddress();
 
             if( logger.isDebugEnabled() ){
-                logger.debug( "{}, vtStart / {}", this.uid, clientId );
+                logger.debug( "{}, vtStart / {}", this.uid, this.clientId );
             }
 
             thisThread = Thread.currentThread();
@@ -95,7 +108,7 @@ public class PassRequestExecutor implements Stopable {
 
                 reqCounter++;
                 this.rid = this.uid + "-" + reqCounter;
-                this.virtualHosts = ProxyPassServer.getVirtualHosts(clientId, false);
+                this.virtualHosts = ProxyPassServer.getVirtualHosts(this.clientId, false);
 
                 //read-req-header
                 HeaderLines requestHeaders = new HeaderLines(HTTP.INIT_HEADER_LINES);
@@ -107,6 +120,11 @@ public class PassRequestExecutor implements Stopable {
                     );
                     return;
                 }
+
+                // Enqueue REQ header HTTP event
+                HttpEvent reqHeaderEvent = new HttpEvent(this.clientId, this.rid, HttpEventType.REQ_HEADER);
+                reqHeaderEvent.setHeaders(requestHeaders);
+                HttpEventManager.getInstance().enqueue(reqHeaderEvent);
 
                 // Parse HTTP request
                 HttpRequest httpRequest = requestHeaders.parseHttpRequest();
@@ -132,16 +150,39 @@ public class PassRequestExecutor implements Stopable {
 
                 VirtualPath virtualPath = getVirtualPath(rid, httpRequest.getHost(), httpRequest.getPath());
 
+                boolean targetChanged = false;
+                if( preVirtualPath == null ) preVirtualPath = virtualPath;
+                else {
+                    //browser > keep-alive > route > target server
+                    String newTarget = virtualPath.getTarget().toString();
+                    String preTarget = preVirtualPath.getTarget().toString();
+                    if( !preTarget.equals(newTarget) ) targetChanged = true;
+                }
+
+                if (logger.isDebugEnabled()) {
+                    logger.debug("{}, {}, targetChanged={}, targetServerSocket={}"
+                            , rid
+                            , HttpStream.Flow.REQ
+                            , targetChanged
+                            , serverSocket
+                    );
+                }
+
                 //create socket - url matched
-                if (serverSocket == null) {
+                if (serverSocket == null || targetChanged) {
+
+                    //create new server socket - new target route
+                    if (targetChanged && serverSocket != null) forceCloseServerSocket();
+
                     serverSocket = createServerSocket(rid, httpRequest.getHost(), virtualPath);
                     serverIn = new HttpStreamReader(serverSocket.getInputStream(), HTTP.BODY_BUFFER_SIZE);
                     serverOut = new HttpStreamWriter(serverSocket.getOutputStream());
 
                     child =  VThreadExecutor.run(
                             new PassResponseExecutor(this, serverIn, clientOut)
-                            , Thread.currentThread().getName() + "x"
+                            , Thread.currentThread().getName() + "x" + reqCounter
                         );
+
                 }
 
                 //write-req-header
@@ -153,7 +194,7 @@ public class PassRequestExecutor implements Stopable {
                 }
 
                 // Relay request body to server if exists
-                HttpStream.Connection connection = RelayBody.relayRequestBody(rid, HttpStream.Flow.REQ, httpRequest, clientIn, serverOut);
+                HttpStream.Connection connection = RelayBody.relayRequestBody(this.clientId, rid, HttpStream.Flow.REQ, httpRequest, clientIn, serverOut);
                 if (connection == HttpStream.Connection.CLOSE) {
                     this.stop = true;
                 }
@@ -214,6 +255,17 @@ public class PassRequestExecutor implements Stopable {
         clientIn = null;
         clientOut = null;
         clientSocket = null;
+    }
+
+    private void forceCloseServerSocket(){
+
+        if (serverIn != null)  try { serverIn.close();  } catch (Exception e) { logger.debug("Error closing previous serverIn: {}", e.getMessage()); }
+        if (serverOut != null) try { serverOut.close(); } catch (Exception e) { logger.debug("Error closing previous serverOut: {}", e.getMessage()); }
+        if (serverSocket != null) try { serverSocket.close(); } catch (Exception e) { logger.debug("Error closing previous serverSocket: {}", e.getMessage()); }
+
+        serverIn = null;
+        serverOut = null;
+        serverSocket = null;
     }
 
     private VirtualPath getVirtualPath(String rid, String vhost, String uri) throws IOException {

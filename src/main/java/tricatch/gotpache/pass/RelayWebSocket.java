@@ -6,6 +6,9 @@ import org.slf4j.LoggerFactory;
 import tricatch.gotpache.http.io.HttpStream;
 import tricatch.gotpache.http.io.HttpStreamReader;
 import tricatch.gotpache.http.io.HttpStreamWriter;
+import tricatch.gotpache.event.HttpEvent;
+import tricatch.gotpache.event.HttpEventManager;
+import tricatch.gotpache.event.HttpEventType;
 import java.io.IOException;
 
 /**
@@ -17,6 +20,7 @@ public class RelayWebSocket {
 
     /**
      * Relay WebSocket frames between HttpStreamReader and HttpStreamWriter
+     * @param clientId Client identifier
      * @param rid Request ID for logging
      * @param flow Body stream flow direction (REQ/RES)
      * @param in Input stream reader
@@ -24,13 +28,15 @@ public class RelayWebSocket {
      * @return HttpStream.Connection indicating whether connection should be closed
      * @throws IOException when I/O error occurs
      */
-    public static HttpStream.Connection relay(String rid, HttpStream.Flow flow, HttpStreamReader in, HttpStreamWriter out) throws IOException {
+    public static HttpStream.Connection relay(String clientId, String rid, HttpStream.Flow flow, HttpStreamReader in, HttpStreamWriter out) throws IOException {
         if (logger.isDebugEnabled()) {
             logger.debug("{}, {}, Relaying WebSocket frames"
                     , rid
                     , flow
             );
         }
+        
+        java.io.ByteArrayOutputStream bodyCollector = new java.io.ByteArrayOutputStream();
         
         while (true) {
 
@@ -45,6 +51,11 @@ public class RelayWebSocket {
             logFrame(rid, flow, "READ", frame);
             writeFrame(out, frame);
             logFrame(rid, flow, "WRITE", frame);
+            
+            // Collect frame payload for logging
+            if (frame.getPayload() != null && frame.getPayload().length > 0) {
+                bodyCollector.write(frame.getPayload());
+            }
 
             if (frame.getOpcode() == 0x8) {
                 if (logger.isDebugEnabled()) {
@@ -60,6 +71,13 @@ public class RelayWebSocket {
                     , flow
             );
         }
+        
+        // Enqueue body HTTP event
+        HttpEvent bodyEvent = new HttpEvent(clientId, rid, 
+            flow == HttpStream.Flow.REQ ? HttpEventType.REQ_BODY : HttpEventType.RES_BODY);
+        bodyEvent.setBody(bodyCollector.toByteArray());
+        bodyEvent.setHttpStream(HttpStream.WEBSOCKET);
+        HttpEventManager.getInstance().enqueue(bodyEvent);
         
         // WebSocket relay completed, connection should be closed
         return HttpStream.Connection.CLOSE;
