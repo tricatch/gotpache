@@ -71,7 +71,7 @@ public class DropHttpEventConsumer extends AbstractHttpEventConsumer {
         
         logBuilder.append("=== End of DROPPED HTTP Event ===");
         
-        logger.info(logBuilder.toString());
+        //logger.info(logBuilder.toString());
     }
     
     @Override

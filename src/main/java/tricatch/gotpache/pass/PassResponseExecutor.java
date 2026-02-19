@@ -124,8 +124,10 @@ public class PassResponseExecutor implements Stopable {
             if( logger.isDebugEnabled() ){
                 logger.debug( "{}, vtEnd", this.passRequestExecutor.getUid() );
             }
-            passRequestExecutor.setStop(true);
-            LockSupport.unpark(this.passRequestExecutor.getThread());
+            if (passRequestExecutor.getChildThread() == this.thisThread) {
+                passRequestExecutor.setStop(true);
+                LockSupport.unpark(this.passRequestExecutor.getThread());
+            }
         }
 
     }
