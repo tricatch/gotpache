@@ -4,6 +4,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import tricatch.gotpache.http.HTTP;
 import tricatch.gotpache.http.io.*;
+import tricatch.gotpache.event.HttpEvent;
+import tricatch.gotpache.event.HttpEventManager;
+import tricatch.gotpache.event.HttpEventType;
 import tricatch.gotpache.server.VThreadExecutor;
 
 import java.io.IOException;
@@ -78,11 +81,17 @@ public class PassResponseExecutor implements Stopable {
                     );
                 }
 
+                // Enqueue RES header HTTP event
+                String clientId = this.passRequestExecutor.getClientId();
+                HttpEvent resHeaderEvent = new HttpEvent(clientId, this.rid, HttpEventType.RES_HEADER);
+                resHeaderEvent.setHeaders(responseHeaders);
+                HttpEventManager.getInstance().enqueue(resHeaderEvent);
+
                 //write-res-header
                 clientOut.writeHeaders(responseHeaders);
 
                 // Relay response body to client
-                HttpStream.Connection connection = RelayBody.relayResponseBody(rid, HttpStream.Flow.RES, response, serverIn, clientOut);
+                HttpStream.Connection connection = RelayBody.relayResponseBody(clientId, rid, HttpStream.Flow.RES, response, serverIn, clientOut);
                 if (connection == HttpStream.Connection.CLOSE) {
                     passRequestExecutor.setStop(true);
                 }
@@ -115,8 +124,10 @@ public class PassResponseExecutor implements Stopable {
             if( logger.isDebugEnabled() ){
                 logger.debug( "{}, vtEnd", this.passRequestExecutor.getUid() );
             }
-            passRequestExecutor.setStop(true);
-            LockSupport.unpark(this.passRequestExecutor.getThread());
+            if (passRequestExecutor.getChildThread() == this.thisThread) {
+                passRequestExecutor.setStop(true);
+                LockSupport.unpark(this.passRequestExecutor.getThread());
+            }
         }
 
     }

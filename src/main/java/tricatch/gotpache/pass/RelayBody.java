@@ -20,6 +20,7 @@ public class RelayBody {
     
     /**
      * Relay HTTP body to client/server based on body stream type
+     * @param clientId Client identifier
      * @param rid Request ID for logging
      * @param flow Body stream flow direction (REQ/RES)
      * @param response HTTP response containing body stream information
@@ -28,7 +29,7 @@ public class RelayBody {
      * @return HttpStream.Connection indicating whether connection should be closed
      * @throws IOException when I/O error occurs
      */
-    public static HttpStream.Connection relayResponseBody(String rid, HttpStream.Flow flow, HttpResponse response, HttpStreamReader in, HttpStreamWriter out) throws IOException {
+    public static HttpStream.Connection relayResponseBody(String clientId, String rid, HttpStream.Flow flow, HttpResponse response, HttpStreamReader in, HttpStreamWriter out) throws IOException {
         HttpStream httpStream = response.getBodyStream();
         
         if (logger.isDebugEnabled()) {
@@ -52,16 +53,16 @@ public class RelayBody {
                 return HttpStream.Connection.KEEP_ALIVE;
                 
             case CONTENT_LENGTH:
-                return RelayContentLength.relay(rid, flow, response, in, out);
+                return RelayContentLength.relay(clientId, rid, flow, response, in, out);
                 
             case CHUNKED:
-                return RelayChunked.relay(rid, flow, in, out);
+                return RelayChunked.relay(clientId, rid, flow, in, out);
                 
             case WEBSOCKET:
-                return RelayWebSocket.relay(rid, flow, in, out);
+                return RelayWebSocket.relay(clientId, rid, flow, in, out);
                 
             case UNTIL_CLOSE:
-                return RelayUntilClose.relay(rid, flow, in, out);
+                return RelayUntilClose.relay(clientId, rid, flow, in, out);
                 
             default:
                 logger.warn("{}, {}, Unknown body stream type: {}"
@@ -75,6 +76,7 @@ public class RelayBody {
     
     /**
      * Relay request body to server based on body stream type
+     * @param clientId Client identifier
      * @param rid Request ID for logging
      * @param flow Body stream flow direction (REQ/RES)
      * @param request HTTP request containing body stream information
@@ -83,7 +85,7 @@ public class RelayBody {
      * @return HttpStream.Connection indicating whether connection should be closed
      * @throws IOException when I/O error occurs
      */
-    public static HttpStream.Connection relayRequestBody(String rid, HttpStream.Flow flow, HttpRequest request, HttpStreamReader in, HttpStreamWriter out) throws IOException {
+    public static HttpStream.Connection relayRequestBody(String clientId, String rid, HttpStream.Flow flow, HttpRequest request, HttpStreamReader in, HttpStreamWriter out) throws IOException {
         HttpStream httpStream = request.getHttpStream();
         
         if (logger.isDebugEnabled()) {
@@ -107,16 +109,16 @@ public class RelayBody {
                 return HttpStream.Connection.KEEP_ALIVE;
                 
             case CONTENT_LENGTH:
-                return RelayContentLength.relay(rid, flow, request, in, out);
+                return RelayContentLength.relay(clientId, rid, flow, request, in, out);
                 
             case CHUNKED:
-                return RelayChunked.relay(rid, flow, in, out);
+                return RelayChunked.relay(clientId, rid, flow, in, out);
                 
             case WEBSOCKET:
-                return RelayWebSocket.relay(rid, flow, in, out);
+                return RelayWebSocket.relay(clientId, rid, flow, in, out);
                 
             case UNTIL_CLOSE:
-                return RelayUntilClose.relay(rid, flow, in, out);
+                return RelayUntilClose.relay(clientId, rid, flow, in, out);
                 
             default:
                 logger.warn("{}, {}, Unknown body stream type: {}"
