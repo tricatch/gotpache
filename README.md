@@ -11,6 +11,10 @@ apache/nginx의 복잡한 기능을 가지고 있지 않지만, ProxyPass와 유
 
 ### Release Note
 
+#### v0.7.0
+* Keep-Alive 로 동작할때 대상서버가 이전 연결과 다르면 소켓을 다시 열도록 수정
+
+  
 #### v0.6.0
 * console ui 추가
   * ROOT 인증서 생성
