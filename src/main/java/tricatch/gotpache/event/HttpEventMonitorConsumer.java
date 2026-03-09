@@ -1,20 +1,15 @@
 package tricatch.gotpache.event;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import tricatch.gotpache.http.io.HeaderLines;
-import tricatch.gotpache.http.io.HttpRequest;
-import tricatch.gotpache.http.io.HttpResponse;
+import tricatch.gotpache.util.JsonUtil;
 
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
-import java.text.SimpleDateFormat;
-import java.util.Date;
-import java.util.Locale;
+import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.TimeZone;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Monitor consumer for SSE. Receives all HttpEvents and emits JSON to OutputStream.
@@ -39,36 +34,27 @@ public class HttpEventMonitorConsumer implements HttpEventConsumer {
 
     @Override
     public void process(HttpEvent event) {
-
         if (event == null) {
             return;
         }
-        // Drop the event - optionally log for debugging
-        if (logger.isDebugEnabled()) {
-            StringBuilder logBuilder = new StringBuilder();
-            logBuilder.append("ClientId: ").append(event.getClientId()).append("\n");
-            logBuilder.append("Rid: ").append(event.getRid()).append("\n");
-            logBuilder.append("Type: ").append(event.getType()).append("\n");
-            logBuilder.append("Timestamp: ").append(event.getTimestamp()).append("\n");
-            if (event.getHttpStream() != null) {
-                logBuilder.append("HttpStream: ").append(event.getHttpStream()).append("\n");
-            }
-            if (event.getHeaders() != null) {
-                logBuilder.append("Headers:\n").append(event.getHeaders()).append("\n");
-            }
-            if (event.getBody() != null) {
-                logBuilder.append("Body Size: ").append(event.getBody().length).append(" bytes\n");
-            }
-            logger.debug(logBuilder.toString());
+        try {
+            Map<String, Object> data = new LinkedHashMap<>();
+            data.put("name", "/");
+            data.put("method", "-");
+            data.put("status", "-");
+            data.put("type", event.getType() != null ? event.getType().name() : "fetch");
+            data.put("initiator", "-");
+            data.put("size", event.getBody() != null ? event.getBody().length : "-");
+            data.put("time", event.getTimestamp());
 
-            try{
-                out.write( logBuilder.toString().getBytes(StandardCharsets.UTF_8) );
-            } catch (IOException e) {
-                logger.error( e.getMessage(), e);
-            }
+            String json = JsonUtil.pretty(data).replace("\n", "\ndata: ");
+            String sse = "data: " + json + "\n\n";
+            out.write(sse.getBytes(StandardCharsets.UTF_8));
+            out.flush();
+        } catch (JsonProcessingException e) {
+            logger.debug("Failed to serialize event: {}", e.getMessage());
+        } catch (IOException e) {
+            logger.trace("Monitor consumer write failed (client disconnected): {}", e.getMessage());
         }
-
     }
-
-
 }
