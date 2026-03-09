@@ -13,6 +13,7 @@ import tricatch.gotpache.console.cmd.CmdCaDownload;
 import tricatch.gotpache.console.cmd.CmdCaGenerate;
 import tricatch.gotpache.console.cmd.CmdCaCreate;
 import tricatch.gotpache.console.cmd.CmdMonitor;
+import tricatch.gotpache.console.cmd.CmdMonitorEvent;
 import tricatch.gotpache.console.cmd.CmdProxyConfig;
 import tricatch.gotpache.console.cmd.CmdProxyConfigsSave;
 
@@ -32,6 +33,7 @@ public class ProxyPassConsole implements Runnable {
         commands.put("/", new CmdWelcome());
         commands.put("/welcome", new CmdWelcome());
         commands.put("/monitor", new CmdMonitor());
+        commands.put("/monitor/event", new CmdMonitorEvent());
         commands.put("/proxyconfig", new CmdProxyConfig());
         commands.put("/proxyconfig/save", new CmdProxyConfigsSave());
         commands.put("/ca/download", new CmdCaDownload());
