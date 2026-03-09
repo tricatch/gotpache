@@ -3,8 +3,10 @@ package tricatch.gotpache.event;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
@@ -31,14 +33,16 @@ public class HttpEventManager {
     private static HttpEventManager instance;
 
     private final EventQueue eventQueue;
-    private final Map<String, HttpEventConsumer> ipSubscriberMap;
+    private final Map<String, HttpEventConsumer> subscriberMap;
+    private final List<HttpEventMonitorConsumer> monitorConsumers;
     private final HttpEventDropConsumer httpEventDropConsumer;
     private final ExecutorService workerPool;
     private volatile boolean running = false;
 
     private HttpEventManager(int workerCount) {
         this.eventQueue = new EventQueue();
-        this.ipSubscriberMap = new ConcurrentHashMap<>();
+        this.subscriberMap = new ConcurrentHashMap<>();
+        this.monitorConsumers = new CopyOnWriteArrayList<>();
         this.httpEventDropConsumer = new HttpEventDropConsumer();
 
         int workers = Math.max(MIN_WORKER_COUNT, Math.min(MAX_WORKER_COUNT, workerCount));
@@ -82,7 +86,8 @@ public class HttpEventManager {
     }
 
     /**
-     * Dispatch event: registered IP → Subscriber, else → DropConsumer
+     * Dispatch event: registered IP → Subscriber, else → DropConsumer.
+     * Also broadcast to all monitor consumers (SSE).
      */
     private void dispatch(HttpEvent event) {
         if (event == null || event.getClientId() == null) {
@@ -90,12 +95,21 @@ public class HttpEventManager {
             return;
         }
 
-        HttpEventConsumer httpEventConsumer = ipSubscriberMap.get(event.getClientId());
+        HttpEventConsumer httpEventConsumer = subscriberMap.get(event.getClientId());
 
         if (httpEventConsumer != null) {
             httpEventConsumer.process(event);
         } else {
             httpEventDropConsumer.process(event);
+        }
+
+        // Broadcast to all monitor SSE consumers
+        for (HttpEventMonitorConsumer mc : monitorConsumers) {
+            try {
+                mc.process(event);
+            } catch (Exception e) {
+                logger.debug("Monitor consumer error (may be disconnected): {}", e.getMessage());
+            }
         }
     }
 
@@ -148,17 +162,51 @@ public class HttpEventManager {
     }
 
     /**
+     * Add subscriber for IP (clientId)
+     */
+    public void add(String clientId, HttpEventConsumer consumer) {
+        if (clientId == null || consumer == null) {
+            throw new IllegalArgumentException("clientId and consumer cannot be null");
+        }
+        if (!clientId.equals(consumer.getClientId())) {
+            throw new IllegalArgumentException(
+                    "ClientId mismatch: expected " + clientId + ", got " + consumer.getClientId());
+        }
+        subscriberMap.put(clientId, consumer);
+        logger.debug("Added subscriber for IP: {}", clientId);
+    }
+
+    /**
      * Get subscriber for IP
      */
     public HttpEventConsumer getConsumer(String clientId) {
-        return ipSubscriberMap.get(clientId);
+        return subscriberMap.get(clientId);
     }
 
     /**
      * Check if subscriber exists for IP
      */
     public boolean hasConsumer(String clientId) {
-        return ipSubscriberMap.containsKey(clientId);
+        return subscriberMap.containsKey(clientId);
+    }
+
+    /**
+     * Add monitor consumer (SSE). Receives all events regardless of clientId.
+     */
+    public void addMonitorConsumer(HttpEventMonitorConsumer consumer) {
+        if (consumer == null) {
+            throw new IllegalArgumentException("monitor consumer cannot be null");
+        }
+        monitorConsumers.add(consumer);
+        logger.debug("Added monitor consumer: {}", consumer.getClientId());
+    }
+
+    /**
+     * Remove monitor consumer
+     */
+    public void removeMonitorConsumer(String clientId) {
+        monitorConsumers.removeIf(mc -> clientId.equals(mc.getClientId()));
+        logger.debug("Removed monitor consumer: {}", clientId);
     }
 
     /**
@@ -178,6 +226,7 @@ public class HttpEventManager {
             Thread.currentThread().interrupt();
         }
 
-        ipSubscriberMap.clear();
+        subscriberMap.clear();
+        monitorConsumers.clear();
     }
 }
