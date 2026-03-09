@@ -38,17 +38,15 @@ public class FreeMarkerUtil {
         Configuration config = new Configuration(Configuration.VERSION_2_3_32);
         config.setDefaultEncoding(StandardCharsets.UTF_8.name());
         
-        // Try to use ClassTemplateLoader first (for JAR packaging), fallback to FileTemplateLoader
-        try {
-            // Use ClassTemplateLoader for JAR-compatible resource loading
-            freemarker.cache.ClassTemplateLoader ctl = new freemarker.cache.ClassTemplateLoader(FreeMarkerUtil.class, "/templates");
-            config.setTemplateLoader(ctl);
-        } catch (Exception e) {
-            // Fallback to FileTemplateLoader for development
-            FileTemplateLoader ftl = new FileTemplateLoader(new File("src/main/resources/templates"));
-            config.setTemplateLoader(ftl);
+        // Development: use FileTemplateLoader so FTL changes load immediately (no server restart)
+        File templatesDir = new File("src/main/resources/templates");
+        if (templatesDir.exists() && templatesDir.isDirectory()) {
+            config.setTemplateLoader(new FileTemplateLoader(templatesDir));
+            config.setTemplateUpdateDelayMilliseconds(0); // always re-read from disk
+        } else {
+            // JAR/production: use classpath
+            config.setTemplateLoader(new freemarker.cache.ClassTemplateLoader(FreeMarkerUtil.class, "/templates"));
         }
-        config.setTemplateUpdateDelayMilliseconds(0);
         
         Template template = config.getTemplate(templateName);
         
