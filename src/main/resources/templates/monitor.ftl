@@ -278,9 +278,9 @@
             <!-- Top: Request list (Chrome Network tab style) -->
             <div class="monitor-url-list">
                 <div class="monitor-toolbar">
-                    <button type="button" class="uk-button uk-button-default uk-button-small monitor-record-btn" id="monitor-start-stop-btn" title="Start/Stop">
-                        <i class="fa-solid fa-circle monitor-toolbar-icon" id="monitor-start-icon"></i>
-                        <i class="fa-solid fa-square monitor-toolbar-icon uk-hidden" id="monitor-stop-icon"></i>
+                    <button type="button" class="uk-button uk-button-default uk-button-small monitor-record-btn recording" id="monitor-start-stop-btn" title="Start/Stop">
+                        <i class="fa-solid fa-circle monitor-toolbar-icon uk-hidden" id="monitor-start-icon"></i>
+                        <i class="fa-solid fa-square monitor-toolbar-icon" id="monitor-stop-icon"></i>
                     </button>
                     <button type="button" class="uk-button uk-button-default uk-button-small monitor-clear-btn" id="monitor-clear-btn" title="Clear">
                         <i class="fa-solid fa-broom monitor-toolbar-icon"></i>
@@ -298,63 +298,7 @@
                             <th>Time</th>
                         </tr>
                     </thead>
-                    <tbody>
-                        <tr class="url-item uk-active" data-url="/api/users" data-method="GET">
-                            <td class="col-name">/api/users</td>
-                            <td class="col-status">200</td>
-                            <td class="col-type">fetch</td>
-                            <td class="col-initiator">app.js:42</td>
-                            <td class="col-size">2.1 kB</td>
-                            <td class="col-time">89 ms</td>
-                        </tr>
-                        <tr class="url-item" data-url="/api/posts/1" data-method="GET">
-                            <td class="col-name">/api/posts/1</td>
-                            <td class="col-status">200</td>
-                            <td class="col-type">fetch</td>
-                            <td class="col-initiator">app.js:58</td>
-                            <td class="col-size">1.2 kB</td>
-                            <td class="col-time">45 ms</td>
-                        </tr>
-                        <tr class="url-item" data-url="/api/login" data-method="POST">
-                            <td class="col-name">/api/login</td>
-                            <td class="col-status">200</td>
-                            <td class="col-type">xhr</td>
-                            <td class="col-initiator">login.js:12</td>
-                            <td class="col-size">0.5 kB</td>
-                            <td class="col-time">153 ms</td>
-                        </tr>
-                        <tr class="url-item" data-url="/static/app.js" data-method="GET">
-                            <td class="col-name">/static/app.js</td>
-                            <td class="col-status">200</td>
-                            <td class="col-type">script</td>
-                            <td class="col-initiator">index.html</td>
-                            <td class="col-size">77.0 kB</td>
-                            <td class="col-time">110 ms</td>
-                        </tr>
-                        <tr class="url-item" data-url="/static/style.css" data-method="GET">
-                            <td class="col-name">/static/style.css</td>
-                            <td class="col-status">200</td>
-                            <td class="col-type">stylesheet</td>
-                            <td class="col-initiator">index.html</td>
-                            <td class="col-size">24.3 kB</td>
-                            <td class="col-time">52 ms</td>
-                        </tr>
-                        <tr class="url-item" data-url="/assets/logo.png" data-method="GET">
-                            <td class="col-name">/assets/logo.png</td>
-                            <td class="col-status">200</td>
-                            <td class="col-type">png</td>
-                            <td class="col-initiator">app.js</td>
-                            <td class="col-size">5.6 kB</td>
-                            <td class="col-time">33 ms</td>
-                        </tr>
-                        <tr class="url-item" data-url="/api/config" data-method="PUT">
-                            <td class="col-name">/api/config</td>
-                            <td class="col-status">200</td>
-                            <td class="col-type">xhr</td>
-                            <td class="col-initiator">settings.js:88</td>
-                            <td class="col-size">0.3 kB</td>
-                            <td class="col-time">221 ms</td>
-                        </tr>
+                    <tbody id="monitor-request-tbody">
                     </tbody>
                 </table>
                 </div>
@@ -401,20 +345,24 @@ user_pref       theme=dark</pre>
     <#include "common/footer.ftl">
 
     <script>
-        document.querySelectorAll('.monitor-url-list .url-item').forEach(function(el) {
-            el.addEventListener('click', function() {
-                document.querySelectorAll('.monitor-url-list .url-item').forEach(function(i) { i.classList.remove('uk-active'); });
-                this.classList.add('uk-active');
-            });
-        });
-
         (function() {
+            var tbody = document.getElementById('monitor-request-tbody');
             var clearBtn = document.getElementById('monitor-clear-btn');
             var startStopBtn = document.getElementById('monitor-start-stop-btn');
             var startIcon = document.getElementById('monitor-start-icon');
             var stopIcon = document.getElementById('monitor-stop-icon');
-            var tbody = document.querySelector('.monitor-request-table tbody');
-            var isRecording = false;
+            var isRecording = true;  // Start recording on page load to show events
+
+            // Event delegation for row click
+            if (tbody) {
+                tbody.addEventListener('click', function(e) {
+                    var row = e.target.closest('.url-item');
+                    if (row) {
+                        document.querySelectorAll('.monitor-url-list .url-item').forEach(function(i) { i.classList.remove('uk-active'); });
+                        row.classList.add('uk-active');
+                    }
+                });
+            }
 
             clearBtn.addEventListener('click', function() {
                 if (tbody) tbody.innerHTML = '';
@@ -432,6 +380,37 @@ user_pref       theme=dark</pre>
                     startStopBtn.classList.remove('recording');
                 }
             });
+
+            // SSE: connect to /monitor/event and add rows
+            var eventSource = new EventSource('/monitor/event');
+            eventSource.onmessage = function(e) {
+                try {
+                    var data = JSON.parse(e.data);
+                    if (!tbody || !isRecording) return;
+                    var tr = document.createElement('tr');
+                    tr.className = 'url-item';
+                    tr.setAttribute('data-url', data.name || '/');
+                    tr.setAttribute('data-method', data.method || 'GET');
+                    tr.innerHTML = '<td class="col-name">' + escapeHtml(data.name || '/') + '</td>' +
+                        '<td class="col-status">' + escapeHtml(data.status || '-') + '</td>' +
+                        '<td class="col-type">' + escapeHtml(data.type || 'fetch') + '</td>' +
+                        '<td class="col-initiator">' + escapeHtml(data.initiator || '-') + '</td>' +
+                        '<td class="col-size">' + escapeHtml(data.size || '-') + '</td>' +
+                        '<td class="col-time">' + escapeHtml(data.time || '-') + '</td>';
+                    tbody.insertBefore(tr, tbody.firstChild);
+                } catch (err) {
+                    console.warn('Monitor SSE parse error:', err);
+                }
+            };
+            eventSource.onerror = function() {
+                console.warn('Monitor SSE connection error, reconnecting...');
+            };
+
+            function escapeHtml(s) {
+                var div = document.createElement('div');
+                div.textContent = s;
+                return div.innerHTML;
+            }
         })();
 
         (function() {

@@ -68,7 +68,7 @@ public class RelayUntilClose {
         
         out.flush();
         
-        // Enqueue body HTTP event
+        // Enqueue body HttpEvent
         HttpEvent bodyEvent = new HttpEvent(clientId, rid, 
             flow == HttpStream.Flow.REQ ? HttpEventType.REQ_BODY : HttpEventType.RES_BODY);
         bodyEvent.setBody(bodyCollector.toByteArray());

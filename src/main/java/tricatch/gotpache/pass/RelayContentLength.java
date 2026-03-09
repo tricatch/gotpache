@@ -162,7 +162,7 @@ public class RelayContentLength {
         
         out.flush();
         
-        // Enqueue body HTTP event
+        // Enqueue body HttpEvent
         HttpEvent bodyEvent = new HttpEvent(clientId, rid, HttpEventType.REQ_BODY);
         bodyEvent.setBody(bodyCollector.toByteArray());
         bodyEvent.setHttpStream(HttpStream.CONTENT_LENGTH);

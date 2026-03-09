@@ -12,27 +12,10 @@ public interface HttpEventConsumer {
      */
     String getClientId();
     
+
     /**
-     * Start consuming HTTP events
-     * Called when consumer is registered
-     */
-    void start();
-    
-    /**
-     * Stop consuming HTTP events
-     * Called when consumer is unregistered
-     */
-    void stop();
-    
-    /**
-     * Enqueue an HTTP event for processing
+     * Process an HTTP event directly (synchronous)
      * @param event HTTP event to process
      */
-    void enqueue(HttpEvent event);
-    
-    /**
-     * Check if consumer is running
-     * @return true if running, false otherwise
-     */
-    boolean isRunning();
+    void process(HttpEvent event);
 }
