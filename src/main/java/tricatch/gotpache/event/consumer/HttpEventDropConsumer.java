@@ -1,7 +1,9 @@
-package tricatch.gotpache.event;
+package tricatch.gotpache.event.consumer;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import tricatch.gotpache.event.HttpEvent;
+import tricatch.gotpache.event.HttpEventConsumer;
 
 /**
  * Drop consumer for HttpEvents when no IP subscriber is registered.
@@ -13,7 +15,12 @@ public class HttpEventDropConsumer implements HttpEventConsumer {
 
     @Override
     public String getClientId() {
-        return "httpEventDropConsumer";
+        return HttpEventDropConsumer.class.getSimpleName();
+    }
+
+    @Override
+    public String getChannelId() {
+        return HttpEventDropConsumer.class.getSimpleName();
     }
 
     /**

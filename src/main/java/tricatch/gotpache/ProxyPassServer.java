@@ -12,6 +12,7 @@ import org.yaml.snakeyaml.representer.Representer;
 import tricatch.gotpache.cfg.Config;
 import tricatch.gotpache.cfg.VirtualHost;
 import tricatch.gotpache.cfg.VirtualHostsMap;
+import tricatch.gotpache.event.HttpEventManager;
 import tricatch.gotpache.exception.ConfigException;
 import tricatch.gotpache.server.*;
 import tricatch.gotpache.util.BrowserUtil;
@@ -47,6 +48,8 @@ public class ProxyPassServer {
             Security.addProvider(new BouncyCastleProvider());
 
             initConfig();
+
+            HttpEventManager.getInstance();
 
             serverExecutor.execute(new ProxyPassConsole());
 

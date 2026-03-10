@@ -1,8 +1,10 @@
-package tricatch.gotpache.event;
+package tricatch.gotpache.event.consumer;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import tricatch.gotpache.event.HttpEvent;
+import tricatch.gotpache.event.HttpEventConsumer;
 import tricatch.gotpache.util.JsonUtil;
 
 import java.io.IOException;
@@ -20,16 +22,23 @@ public class HttpEventMonitorConsumer implements HttpEventConsumer {
     private static final Logger logger = LoggerFactory.getLogger(HttpEventMonitorConsumer.class);
 
     private final String clientId;
+    private final String channelId;
     private final OutputStream out;
 
-    public HttpEventMonitorConsumer(String clientId, OutputStream out) {
+    public HttpEventMonitorConsumer(String clientId, String channelId, OutputStream out) {
         this.clientId = clientId;
+        this.channelId = channelId;
         this.out = out;
     }
 
     @Override
     public String getClientId() {
         return clientId;
+    }
+
+    @Override
+    public String getChannelId() {
+        return channelId;
     }
 
     @Override
