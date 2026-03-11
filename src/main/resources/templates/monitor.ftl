@@ -363,7 +363,18 @@
                     '<td class="col-duration">' + escapeHtml(display.duration) + '</td>' +
                     '<td class="col-code">' + escapeHtml(display.code) + '</td>' +
                     '<td class="col-size">' + escapeHtml(display.size) + '</td>';
-                logTbody.insertBefore(tr, logTbody.firstChild);
+                var newStartTs = (ridRowData[rid] && ridRowData[rid].startTs != null) ? ridRowData[rid].startTs : 0;
+                var rows = logTbody.querySelectorAll('tr[data-rid]');
+                var insertBefore = null;
+                for (var i = 0; i < rows.length; i++) {
+                    var existingRid = rows[i].getAttribute('data-rid');
+                    var existingStartTs = (ridRowData[existingRid] && ridRowData[existingRid].startTs != null) ? ridRowData[existingRid].startTs : 0;
+                    if (existingStartTs > newStartTs) {
+                        insertBefore = rows[i];
+                        break;
+                    }
+                }
+                logTbody.insertBefore(tr, insertBefore);
             }
             function updateRow(row, display) {
                 if (!row) return;
