@@ -157,6 +157,8 @@ public class HttpEventManager {
             return;
         }
 
+        if( logger.isDebugEnabled() ) logger.debug( "EventQueue, cid={}, rid={}, type={}", event.getClientId(), event.getRid(), event.getType());
+
         if (!eventQueue.offer(event)) {
             logger.warn("EventQueue full, dropping event: clientId={}, rid={}", event.getClientId(), event.getRid());
         }

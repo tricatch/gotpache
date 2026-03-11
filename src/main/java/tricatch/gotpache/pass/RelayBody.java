@@ -53,7 +53,7 @@ public class RelayBody {
                 return HttpStream.Connection.KEEP_ALIVE;
                 
             case CONTENT_LENGTH:
-                return RelayContentLength.relay(clientId, rid, flow, response, in, out);
+                return RelayContentLength.relay(clientId, rid, flow, response.getContentLength(), in, out);
                 
             case CHUNKED:
                 return RelayChunked.relay(clientId, rid, flow, in, out);
@@ -109,7 +109,7 @@ public class RelayBody {
                 return HttpStream.Connection.KEEP_ALIVE;
                 
             case CONTENT_LENGTH:
-                return RelayContentLength.relay(clientId, rid, flow, request, in, out);
+                return RelayContentLength.relay(clientId, rid, flow, request.getContentLength(), in, out);
                 
             case CHUNKED:
                 return RelayChunked.relay(clientId, rid, flow, in, out);

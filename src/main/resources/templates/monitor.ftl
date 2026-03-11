@@ -138,7 +138,13 @@
         .detail-content {
             flex: 1 1 0;
             min-height: 0;
-            overflow-y: auto;
+            position: relative;
+            overflow: hidden;
+        }
+        .detail-panel {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            overflow-y: scroll;
             overflow-x: hidden;
             padding: 8px 12px;
             font-size: 12px;
@@ -146,10 +152,13 @@
             background: #fff;
             white-space: pre-wrap;
             word-break: break-all;
-            scrollbar-gutter: stable;
+            visibility: hidden;
+            pointer-events: none;
         }
-        .detail-panel { display: none; }
-        .detail-panel.active { display: block; }
+        .detail-panel.active {
+            visibility: visible;
+            pointer-events: auto;
+        }
     </style>
 </head>
 <body>
@@ -241,7 +250,10 @@
                     document.querySelectorAll('.detail-content .detail-panel').forEach(function(p) { p.classList.remove('active'); });
                     this.classList.add('active');
                     var panel = document.getElementById('detail-' + tab);
-                    if (panel) panel.classList.add('active');
+                    if (panel) {
+                        panel.classList.add('active');
+                        panel.scrollTop = 0;
+                    }
                 });
             });
 
@@ -386,6 +398,7 @@
                 row.querySelector('.col-code').textContent = display.code;
                 row.querySelector('.col-size').textContent = display.size;
             }
+            // 4가지 타입(REQ_HEADER/REQ_BODY/RES_HEADER/RES_BODY)은 모두 동일한 rid에 종속
             function upsertRow(data) {
                 if (!logTbody || !isRecording) return;
                 var rid = data.rid || '';
@@ -395,9 +408,10 @@
                 var headers = data.headers;
                 var body = data.body;
 
+                if (!ridRowData[rid]) ridRowData[rid] = { method: '-', host: '-', path: '/', startTs: timestamp };
+
                 if (type === 'REQ_HEADER') {
                     ridStartMap[rid] = timestamp;
-                    if (!ridRowData[rid]) ridRowData[rid] = {};
                     ridRowData[rid].reqHeaders = headers;
                     ridRowData[rid].method = '-';
                     ridRowData[rid].host = '-';
@@ -411,24 +425,18 @@
                     }
                     var host = getHeaderValue(headers, 'Host');
                     if (host) ridRowData[rid].host = host;
+                } else if (type === 'REQ_BODY' && body != null) {
+                    ridRowData[rid].reqBody = body;
                 } else if (type === 'RES_HEADER') {
-                    if (!ridRowData[rid]) ridRowData[rid] = { method: '-', host: '-', path: '-', startTs: timestamp };
-                    ridRowData[rid].resHeaders = headers;
+                    ridRowData[rid].resHeaders = headers || [];
                     ridRowData[rid].code = '-';
                     var line = parseFirstHeaderLine(headers);
                     if (line) ridRowData[rid].code = parseResponseLine(line) || '-';
                     var startTs = ridStartMap[rid];
-                    ridRowData[rid].startTs = ridRowData[rid].startTs || startTs;
-                    ridRowData[rid].timeMs = (startTs != null && timestamp > 0) ? (timestamp - startTs) : null;
-                } else if (type === 'REQ_BODY' && body != null) {
-                    if (!ridRowData[rid]) ridRowData[rid] = {};
-                    ridRowData[rid].reqBody = body;
+                    if (startTs != null) ridRowData[rid].startTs = ridRowData[rid].startTs || startTs;
+                    ridRowData[rid].timeMs = (startTs != null && startTs > 0 && timestamp > 0) ? (timestamp - startTs) : null;
                 } else if (type === 'RES_BODY' && body != null) {
-                    if (!ridRowData[rid]) ridRowData[rid] = {};
                     ridRowData[rid].resBody = body;
-                }
-                if (body != null) {
-                    if (!ridRowData[rid]) ridRowData[rid] = {};
                     if (typeof body === 'string') {
                         try { ridRowData[rid].size = atob(body).length; } catch (x) { ridRowData[rid].size = body.length; }
                     } else if (Array.isArray(body)) ridRowData[rid].size = body.length;
