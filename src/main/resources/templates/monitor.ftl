@@ -3,23 +3,22 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gotpache Console - Network Monitor</title>
+    <title>Gotpache Console - Log Monitor</title>
     <!-- UIkit CSS -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/uikit@3.23.12/dist/css/uikit.min.css" />
-    <!-- Font Awesome (MIT) -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" crossorigin="anonymous" />
     <!-- UIkit JS -->
     <script src="https://cdn.jsdelivr.net/npm/uikit@3.23.12/dist/js/uikit.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/uikit@3.23.12/dist/js/uikit-icons.min.js"></script>
     <style>
-        .header-gradient {
-            background: #2c3e50;
-        }
+        * { box-sizing: border-box; }
         body {
+            margin: 0;
             min-height: 100vh;
             display: flex;
             flex-direction: column;
+            font-family: system-ui, -apple-system, sans-serif;
         }
+        .header-gradient { background: #2c3e50; }
         .main-content {
             flex: 1;
             display: flex;
@@ -27,239 +26,108 @@
             min-height: 0;
             overflow: hidden;
         }
-        .monitor-split {
+        .app {
             display: flex;
             flex-direction: column;
             flex: 1;
             min-height: 0;
             overflow: hidden;
         }
-        .monitor-url-list {
-            flex: 0 0 45%;
-            min-height: 120px;
-            display: flex;
-            flex-direction: column;
-            background: #fff;
-        }
-        .monitor-toolbar {
+        .toolbar {
             flex: 0 0 auto;
-            padding: 4px 8px;
-            border-bottom: 1px solid #e5e5e5;
+            padding: 8px 12px;
             background: #fafafa;
+            border-bottom: 1px solid #e5e5e5;
             display: flex;
-            gap: 6px;
-            align-items: center;
-            justify-content: flex-start;
+            gap: 8px;
         }
-        .monitor-toolbar .uk-button {
-            padding: 4px 8px;
-            font-size: 11px;
-        }
-        .monitor-record-btn {
-            --record-icon-size: 11px;
-            width: 28px;
-            height: 28px;
-            padding: 0;
-            border-radius: 50%;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
+        .toolbar button {
+            padding: 6px 12px;
+            font-size: 13px;
+            cursor: pointer;
+            border: 1px solid #ccc;
+            border-radius: 4px;
             background: #fff;
-            border: 2px solid #757575;
         }
-        .monitor-record-btn.recording {
-            border-color: #f0506e;
-        }
-        .monitor-record-btn .monitor-toolbar-icon,
-        .monitor-clear-btn .monitor-toolbar-icon,
-        .monitor-toolbar-icon-btn .monitor-toolbar-icon {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: var(--record-icon-size);
-            line-height: 0;
-            width: 1em;
-            height: 1em;
-        }
-        .monitor-record-btn .monitor-toolbar-icon {
-            color: #f0506e;
-        }
-        .monitor-clear-btn .monitor-toolbar-icon,
-        .monitor-toolbar-icon-btn .monitor-toolbar-icon {
-            color: inherit;
-        }
-        .monitor-clear-btn {
-            width: 28px;
-            height: 28px;
-            padding: 0;
-            border-radius: 50%;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
+        .toolbar button:hover { background: #eee; }
+        .toolbar button.recording { border-color: #e74c3c; color: #e74c3c; }
+        .log-list {
+            flex: 1 1 40%;
+            min-height: 100px;
+            overflow-y: auto;
+            padding: 8px;
+            font-size: 12px;
+            font-family: monospace;
             background: #fff;
-            border: 2px solid #757575;
+            border-bottom: 1px solid #e0e0e0;
         }
-        .monitor-toolbar-icon-btn {
-            width: 28px;
-            height: 28px;
-            padding: 0;
-            border-radius: 50%;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            background: #fff;
-            border: 2px solid #757575;
+        .log-item {
+            padding: 4px 6px;
+            cursor: pointer;
+            border-radius: 3px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
-        .monitor-url-list-body {
-            flex: 1;
-            min-height: 0;
-            overflow-y: scroll;
-            scrollbar-gutter: stable;
-        }
-        .monitor-resizer {
+        .log-item:hover { background: #f5f5f5; }
+        .log-item.active { background: #e3f2fd; }
+        .splitter {
             flex: 0 0 6px;
-            background: #e5e5e5;
+            background: #e0e0e0;
             cursor: ns-resize;
             user-select: none;
-            position: relative;
-            border-top: 1px solid #dadce0;
-            border-bottom: 1px solid #dadce0;
         }
-        .monitor-resizer:hover,
-        .monitor-resizer.dragging {
-            background: #2196f3;
-        }
-        .monitor-resizer::after {
-            content: '';
-            position: absolute;
-            left: 50%;
-            top: 50%;
-            transform: translate(-50%, -50%);
-            width: 24px;
-            height: 4px;
-            border-top: 2px solid #9e9e9e;
-            border-bottom: 2px solid #9e9e9e;
-        }
-        .monitor-resizer:hover::after,
-        .monitor-resizer.dragging::after {
-            border-color: #fff;
-        }
-        .monitor-request-table {
-            width: 100%;
-            font-size: 12px;
-            border-collapse: collapse;
-            font-family: system-ui, -apple-system, sans-serif;
-        }
-        .monitor-request-table th {
-            text-align: left;
-            padding: 6px 10px;
-            background: #f1f3f4;
-            border-bottom: 1px solid #dadce0;
-            font-weight: 600;
-            color: #5f6368;
-            white-space: nowrap;
-            position: sticky;
-            top: 0;
-            z-index: 1;
-        }
-        .monitor-request-table td {
-            padding: 6px 10px;
-            border-bottom: 1px solid #eee;
-            cursor: pointer;
-            transition: background 0.15s;
-        }
-        .monitor-request-table tbody tr:hover {
-            background: #f8f9fa;
-        }
-        .monitor-request-table tbody tr.uk-active {
-            background: #e8f0fe;
-        }
-        .monitor-request-table .col-name {
-            font-family: monospace;
-            font-size: 11px;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-        .monitor-request-table .col-status { color: #1e8e3e; }
-        .monitor-request-table .col-type { color: #5f6368; }
-        .monitor-request-table .col-initiator {
-            font-size: 11px;
-            max-width: 140px;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            color: #5f6368;
-        }
-        .monitor-request-table .col-size, .monitor-request-table .col-time {
-            color: #5f6368;
-            white-space: nowrap;
-        }
-        .monitor-detail {
-            flex: 1;
+        .splitter:hover, .splitter.dragging { background: #2196f3; }
+        .detail-tabs {
+            flex: 0 0 auto;
             display: flex;
-            flex-direction: column;
-            min-width: 0;
-            margin-top: 2px;
-        }
-        /* DevTools-style tab bar (X button excluded) */
-        .monitor-detail .uk-tab {
-            padding: 0 0 0 0px;
-            margin: 0;
-            border-bottom: 1px solid #90b4e8;
-            background: #fff;
             gap: 0;
+            padding: 0 8px;
+            background: #fff;
+            border-bottom: 1px solid #90b4e8;
         }
-        .monitor-detail .uk-tab::before {
-            display: none;
-        }
-        .monitor-detail .uk-tab li {
-            margin: 0 0 0 0px;
-        }
-        .monitor-detail .uk-tab li a {
-            padding: 4px 4px;
-            font-size: 11px;
-            color: #5f6368;
-            text-transform: capitalize;
+        .detail-tabs button {
+            padding: 8px 12px;
+            font-size: 12px;
+            cursor: pointer;
             border: none;
             border-bottom: 3px solid transparent;
-            border-radius: 4px 4px 0 0;
+            background: transparent;
+            color: #5f6368;
             margin-bottom: -1px;
         }
-        .monitor-detail .uk-tab li a:hover {
-            color: #202124;
-        }
-        .monitor-detail .uk-tab li.uk-active a {
+        .detail-tabs button:hover { color: #202124; }
+        .detail-tabs button.active {
             color: #1967d2;
             background: #e8f0fe;
-            border-bottom: 3px solid #1967d2;
+            border-bottom-color: #1967d2;
         }
-        .monitor-detail .uk-switcher {
-            margin-top: 0;
-        }
-        .monitor-detail-tab-content {
-            flex: 1;
-            overflow-y: scroll;
-            scrollbar-gutter: stable;
-            padding: 2px 6px 6px 6px;
+        .detail-content {
+            flex: 1 1 0;
+            min-height: 0;
+            overflow-y: auto;
+            overflow-x: hidden;
+            padding: 8px 12px;
             font-size: 12px;
             font-family: monospace;
             background: #fff;
-        }
-        .monitor-detail-tab-content pre {
-            margin: 0;
             white-space: pre-wrap;
             word-break: break-all;
+            scrollbar-gutter: stable;
         }
+        .detail-panel { display: none; }
+        .detail-panel.active { display: block; }
     </style>
 </head>
 <body>
-    <!-- Header Section -->
+    <!-- Header Section (external - previous style) -->
     <div class="header-gradient uk-section uk-section-small uk-light">
         <div class="uk-container uk-container-large">
             <div class="uk-flex uk-flex-between uk-flex-middle">
                 <div>
                     <h1 class="uk-heading-small uk-margin-remove">
                         <span uk-icon="icon: world; ratio: 1.5" class="uk-margin-small-right"></span>
-                        Network Monitor
+                        Log Monitor
                     </h1>
                     <p class="uk-margin-remove-top uk-text-meta">Select a request to view details</p>
                 </div>
@@ -272,73 +140,32 @@
         </div>
     </div>
 
-    <!-- Main: Top/Bottom split layout -->
+    <!-- Main content (internal app) -->
     <div class="main-content">
-        <div class="monitor-split">
-            <!-- Top: Request list (Chrome Network tab style) -->
-            <div class="monitor-url-list">
-                <div class="monitor-toolbar">
-                    <button type="button" class="uk-button uk-button-default uk-button-small monitor-record-btn recording" id="monitor-start-stop-btn" title="Start/Stop">
-                        <i class="fa-solid fa-circle monitor-toolbar-icon uk-hidden" id="monitor-start-icon"></i>
-                        <i class="fa-solid fa-square monitor-toolbar-icon" id="monitor-stop-icon"></i>
-                    </button>
-                    <button type="button" class="uk-button uk-button-default uk-button-small monitor-clear-btn" id="monitor-clear-btn" title="Clear">
-                        <i class="fa-solid fa-broom monitor-toolbar-icon"></i>
-                    </button>
-                </div>
-                <div class="monitor-url-list-body">
-                <table class="monitor-request-table">
-                    <thead>
-                        <tr>
-                            <th>Name</th>
-                            <th>Status</th>
-                            <th>Type</th>
-                            <th>Initiator</th>
-                            <th>Size</th>
-                            <th>Time</th>
-                        </tr>
-                    </thead>
-                    <tbody id="monitor-request-tbody">
-                    </tbody>
-                </table>
-                </div>
+        <div class="app">
+            <div class="toolbar">
+                <button type="button" id="monitor-start-btn">Start</button>
+                <button type="button" id="monitor-stop-btn" class="recording">Stop</button>
+                <button type="button" id="monitor-clear-btn">Clear</button>
             </div>
-            <div class="monitor-resizer" id="monitor-resizer" title="Drag to resize"></div>
-            <!-- Bottom: Detail tabs -->
-            <div class="monitor-detail">
-                <ul class="uk-tab" uk-tab="connect: #monitor-detail-tabs">
-                    <li><a href="#">Header</a></li>
-                    <li><a href="#">Cookie</a></li>
-                    <li><a href="#">Payload</a></li>
-                    <li><a href="#">Response</a></li>
-                </ul>
-                <ul id="monitor-detail-tabs" class="uk-switcher uk-margin-small">
-                    <li class="monitor-detail-tab-content">
-                        <pre id="monitor-headers-content">General
-  Request URL: https://localhost/api/users
-  Request Method: GET
-  Status Code: 200 OK
 
-Response Headers
-  content-type: application/json
-  cache-control: no-cache</pre>
-                    </li>
-                    <li class="monitor-detail-tab-content">
-                        <pre id="monitor-cookies-content">Cookie name    Value
-session_id      abc123...
-user_pref       theme=dark</pre>
-                    </li>
-                    <li class="monitor-detail-tab-content">
-                        <pre id="monitor-payload-content">(No payload for GET request)</pre>
-                    </li>
-                    <li class="monitor-detail-tab-content">
-                        <pre id="monitor-response-content">[
-  { "id": 1, "name": "User One" },
-  { "id": 2, "name": "User Two" }
-]</pre>
-                    </li>
-                </ul>
-            </div>
+        <div class="log-list" id="monitor-log-list" style="flex: 0 0 300px; min-height: 300px;"></div>
+
+        <div class="splitter" id="monitor-splitter"></div>
+
+        <div class="detail-tabs">
+            <button type="button" data-tab="header" class="active">Header</button>
+            <button type="button" data-tab="cookie">Cookie</button>
+            <button type="button" data-tab="request">Request</button>
+            <button type="button" data-tab="response">Response</button>
+        </div>
+
+        <div class="detail-content">
+            <div id="detail-header" class="detail-panel active">(Select a request)</div>
+            <div id="detail-cookie" class="detail-panel">(Select a request)</div>
+            <div id="detail-request" class="detail-panel">(Select a request)</div>
+            <div id="detail-response" class="detail-panel">(Select a request)</div>
+        </div>
         </div>
     </div>
 
@@ -346,96 +173,323 @@ user_pref       theme=dark</pre>
 
     <script>
         (function() {
-            var tbody = document.getElementById('monitor-request-tbody');
+            var logList = document.getElementById('monitor-log-list');
             var clearBtn = document.getElementById('monitor-clear-btn');
-            var startStopBtn = document.getElementById('monitor-start-stop-btn');
-            var startIcon = document.getElementById('monitor-start-icon');
-            var stopIcon = document.getElementById('monitor-stop-icon');
-            var isRecording = true;  // Start recording on page load to show events
+            var startBtn = document.getElementById('monitor-start-btn');
+            var stopBtn = document.getElementById('monitor-stop-btn');
+            var isRecording = true;
 
-            // Event delegation for row click
-            if (tbody) {
-                tbody.addEventListener('click', function(e) {
-                    var row = e.target.closest('.url-item');
-                    if (row) {
-                        document.querySelectorAll('.monitor-url-list .url-item').forEach(function(i) { i.classList.remove('uk-active'); });
-                        row.classList.add('uk-active');
-                    }
+            // Tab switching
+            document.querySelectorAll('.detail-tabs button').forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    var tab = this.getAttribute('data-tab');
+                    document.querySelectorAll('.detail-tabs button').forEach(function(b) { b.classList.remove('active'); });
+                    document.querySelectorAll('.detail-content .detail-panel').forEach(function(p) { p.classList.remove('active'); });
+                    this.classList.add('active');
+                    var panel = document.getElementById('detail-' + tab);
+                    if (panel) panel.classList.add('active');
                 });
-            }
-
-            clearBtn.addEventListener('click', function() {
-                if (tbody) tbody.innerHTML = '';
             });
 
-            startStopBtn.addEventListener('click', function() {
-                isRecording = !isRecording;
-                if (isRecording) {
-                    startIcon.classList.add('uk-hidden');
-                    stopIcon.classList.remove('uk-hidden');
-                    startStopBtn.classList.add('recording');
-                } else {
-                    startIcon.classList.remove('uk-hidden');
-                    stopIcon.classList.add('uk-hidden');
-                    startStopBtn.classList.remove('recording');
+            // Log list click
+            logList.addEventListener('click', function(e) {
+                var item = e.target.closest('.log-item');
+                if (item) {
+                    document.querySelectorAll('.log-item').forEach(function(i) { i.classList.remove('active'); });
+                    item.classList.add('active');
+                    populateDetail(item.getAttribute('data-rid'));
                 }
             });
 
-            // SSE: connect to /monitor/event and add rows
+            clearBtn.addEventListener('click', function() {
+                logList.innerHTML = '';
+                ridStartMap = {};
+                ridRowData = {};
+                populateDetail(null);
+            });
+
+            startBtn.addEventListener('click', function() {
+                isRecording = true;
+                startBtn.classList.remove('recording');
+                stopBtn.classList.add('recording');
+            });
+            stopBtn.addEventListener('click', function() {
+                isRecording = false;
+                startBtn.classList.add('recording');
+                stopBtn.classList.remove('recording');
+            });
+
+            var ridStartMap = {};
+            var ridRowData = {};
+
+            function parseFirstHeaderLine(headers) {
+                if (!headers || !Array.isArray(headers) || headers.length === 0) return null;
+                var first = headers[0];
+                return (typeof first === 'string') ? first.trim() : null;
+            }
+            function getHeaderValue(headers, name) {
+                if (!headers || !Array.isArray(headers)) return null;
+                var lower = name.toLowerCase();
+                for (var i = 1; i < headers.length; i++) {
+                    var line = headers[i];
+                    if (typeof line !== 'string') continue;
+                    line = line.trim();
+                    if (line.toLowerCase().indexOf(lower + ':') === 0) {
+                        var idx = line.indexOf(':');
+                        return idx >= 0 ? line.substring(idx + 1).trim() : null;
+                    }
+                }
+                return null;
+            }
+            function getAllHeaderValues(headers, name) {
+                if (!headers || !Array.isArray(headers)) return [];
+                var lower = name.toLowerCase();
+                var result = [];
+                for (var i = 1; i < headers.length; i++) {
+                    var line = headers[i];
+                    if (typeof line !== 'string') continue;
+                    line = line.trim();
+                    if (line.toLowerCase().indexOf(lower + ':') === 0) {
+                        var idx = line.indexOf(':');
+                        if (idx >= 0) result.push(line.substring(idx + 1).trim());
+                    }
+                }
+                return result;
+            }
+            function parseRequestLine(line) {
+                if (!line) return { method: '-', path: '-' };
+                var parts = line.split(/\s+/);
+                if (parts.length >= 2) return { method: parts[0], path: parts[1] };
+                return { method: '-', path: line || '-' };
+            }
+            function parseResponseLine(line) {
+                if (!line) return null;
+                var parts = line.split(/\s+/);
+                if (parts.length >= 2) return parts[1];
+                return null;
+            }
+            function formatStart(ts) {
+                if (ts == null || ts <= 0) return '--:--:--';
+                var d = new Date(ts);
+                return ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2) + ':' + ('0' + d.getSeconds()).slice(-2) + '.' + ('00' + d.getMilliseconds()).slice(-3);
+            }
+            function findLogItemByRid(rid) {
+                return logList.querySelector('.log-item[data-rid="' + rid + '"]');
+            }
+            function buildLogText(rowData) {
+                var method = rowData.method || '-';
+                var path = rowData.path || '/';
+                var code = rowData.code || '-';
+                var time = formatStart(rowData.startTs);
+                return '[' + time + '] ' + method + ' ' + path + (code !== '-' ? ' \u2192 ' + code : '');
+            }
+            function addLogItem(rid, text) {
+                var div = document.createElement('div');
+                div.className = 'log-item';
+                div.setAttribute('data-rid', rid);
+                div.textContent = text;
+                logList.insertBefore(div, logList.firstChild);
+            }
+            function updateLogItem(item, text) {
+                if (item) item.textContent = text;
+            }
+            function upsertRow(data) {
+                if (!logList || !isRecording) return;
+                var rid = data.rid || '';
+                if (!rid) return;
+                var type = data.type || '';
+                var timestamp = data.timestamp || 0;
+                var headers = data.headers;
+                var body = data.body;
+
+                if (type === 'REQ_HEADER') {
+                    ridStartMap[rid] = timestamp;
+                    if (!ridRowData[rid]) ridRowData[rid] = {};
+                    ridRowData[rid].reqHeaders = headers;
+                    ridRowData[rid].method = '-';
+                    ridRowData[rid].host = '-';
+                    ridRowData[rid].path = '/';
+                    ridRowData[rid].startTs = timestamp;
+                    var line = parseFirstHeaderLine(headers);
+                    if (line) {
+                        var req = parseRequestLine(line);
+                        ridRowData[rid].method = req.method;
+                        ridRowData[rid].path = req.path;
+                    }
+                    var host = getHeaderValue(headers, 'Host');
+                    if (host) ridRowData[rid].host = host;
+                } else if (type === 'RES_HEADER') {
+                    if (!ridRowData[rid]) ridRowData[rid] = { method: '-', host: '-', path: '-', startTs: timestamp };
+                    ridRowData[rid].resHeaders = headers;
+                    ridRowData[rid].code = '-';
+                    var line = parseFirstHeaderLine(headers);
+                    if (line) ridRowData[rid].code = parseResponseLine(line) || '-';
+                    var startTs = ridStartMap[rid];
+                    ridRowData[rid].startTs = ridRowData[rid].startTs || startTs;
+                    ridRowData[rid].timeMs = (startTs != null && timestamp > 0) ? (timestamp - startTs) : null;
+                } else if (type === 'REQ_BODY' && body != null) {
+                    if (!ridRowData[rid]) ridRowData[rid] = {};
+                    ridRowData[rid].reqBody = body;
+                } else if (type === 'RES_BODY' && body != null) {
+                    if (!ridRowData[rid]) ridRowData[rid] = {};
+                    ridRowData[rid].resBody = body;
+                }
+                if (body != null) {
+                    if (!ridRowData[rid]) ridRowData[rid] = {};
+                    if (typeof body === 'string') {
+                        try { ridRowData[rid].size = atob(body).length; } catch (x) { ridRowData[rid].size = body.length; }
+                    } else if (Array.isArray(body)) ridRowData[rid].size = body.length;
+                }
+
+                var rowData = ridRowData[rid] || {};
+                var text = buildLogText(rowData);
+                var item = findLogItemByRid(rid);
+                if (item) {
+                    updateLogItem(item, text);
+                } else {
+                    addLogItem(rid, text);
+                }
+            }
+
+            function decodeBody(body) {
+                if (body == null) return null;
+                if (typeof body === 'string') {
+                    try {
+                        var binary = atob(body);
+                        var bytes = new Uint8Array(binary.length);
+                        for (var i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+                        return new TextDecoder().decode(bytes);
+                    } catch (e) { return body; }
+                }
+                if (Array.isArray(body)) {
+                    var bytes = new Uint8Array(body);
+                    return new TextDecoder().decode(bytes);
+                }
+                return String(body);
+            }
+            function parseCookies(cookieHeader) {
+                if (!cookieHeader) return [];
+                var pairs = cookieHeader.split(';');
+                var result = [];
+                for (var i = 0; i < pairs.length; i++) {
+                    var idx = pairs[i].indexOf('=');
+                    var name = idx >= 0 ? pairs[i].substring(0, idx).trim() : pairs[i].trim();
+                    var value = idx >= 0 ? pairs[i].substring(idx + 1).trim() : '';
+                    if (name) result.push({ name: name, value: value });
+                }
+                return result;
+            }
+            function tryPrettyJson(str) {
+                if (!str || typeof str !== 'string') return str;
+                try {
+                    var obj = JSON.parse(str);
+                    return JSON.stringify(obj, null, 2);
+                } catch (e) { return str; }
+            }
+
+            function populateDetail(rid) {
+                var empty = '(Select a request)';
+                var panels = {
+                    header: document.getElementById('detail-header'),
+                    cookie: document.getElementById('detail-cookie'),
+                    request: document.getElementById('detail-request'),
+                    response: document.getElementById('detail-response')
+                };
+
+                if (!rid || !ridRowData[rid]) {
+                    panels.header.textContent = empty;
+                    panels.cookie.textContent = empty;
+                    panels.request.textContent = empty;
+                    panels.response.textContent = empty;
+                    return;
+                }
+
+                var d = ridRowData[rid];
+                var reqHeaders = d.reqHeaders || [];
+                var resHeaders = d.resHeaders || [];
+                var host = d.host || 'localhost';
+                var method = d.method || 'GET';
+                var path = d.path || '/';
+                var code = d.code || '-';
+
+                var headerLines = [];
+                headerLines.push('General');
+                headerLines.push('  Request URL: ' + (path.indexOf('://') >= 0 ? path : 'https://' + host + path));
+                headerLines.push('  Request Method: ' + method);
+                headerLines.push('  Status Code: ' + code);
+                headerLines.push('');
+                headerLines.push('Request Headers');
+                for (var i = 0; i < reqHeaders.length; i++) {
+                    if (typeof reqHeaders[i] === 'string') headerLines.push('  ' + reqHeaders[i]);
+                }
+                headerLines.push('');
+                headerLines.push('Response Headers');
+                for (var j = 0; j < resHeaders.length; j++) {
+                    if (typeof resHeaders[j] === 'string') headerLines.push('  ' + resHeaders[j]);
+                }
+                panels.header.textContent = headerLines.join('\n');
+
+                var cookieLines = [];
+                var reqCookie = getHeaderValue(reqHeaders, 'Cookie');
+                if (reqCookie) {
+                    cookieLines.push('Request Cookies');
+                    var cookies = parseCookies(reqCookie);
+                    for (var k = 0; k < cookies.length; k++) {
+                        cookieLines.push('  ' + cookies[k].name + ': ' + cookies[k].value);
+                    }
+                }
+                var setCookies = getAllHeaderValues(resHeaders, 'Set-Cookie');
+                if (setCookies && setCookies.length > 0) {
+                    if (cookieLines.length) cookieLines.push('');
+                    cookieLines.push('Response Set-Cookie');
+                    for (var s = 0; s < setCookies.length; s++) {
+                        cookieLines.push('  ' + setCookies[s]);
+                    }
+                }
+                panels.cookie.textContent = cookieLines.length ? cookieLines.join('\n') : '(No cookies)';
+
+                var reqBody = decodeBody(d.reqBody);
+                panels.request.textContent = reqBody ? tryPrettyJson(reqBody) : '(No payload for ' + method + ' request)';
+
+                var resBody = decodeBody(d.resBody);
+                panels.response.textContent = resBody ? tryPrettyJson(resBody) : '(No response body)';
+            }
+
             var eventSource = new EventSource('/monitor/event');
             eventSource.onmessage = function(e) {
                 try {
                     var data = JSON.parse(e.data);
-                    if (!tbody || !isRecording) return;
-                    var tr = document.createElement('tr');
-                    tr.className = 'url-item';
-                    tr.setAttribute('data-url', data.name || '/');
-                    tr.setAttribute('data-method', data.method || 'GET');
-                    tr.innerHTML = '<td class="col-name">' + escapeHtml(data.name || '/') + '</td>' +
-                        '<td class="col-status">' + escapeHtml(data.status || '-') + '</td>' +
-                        '<td class="col-type">' + escapeHtml(data.type || 'fetch') + '</td>' +
-                        '<td class="col-initiator">' + escapeHtml(data.initiator || '-') + '</td>' +
-                        '<td class="col-size">' + escapeHtml(data.size || '-') + '</td>' +
-                        '<td class="col-time">' + escapeHtml(data.time || '-') + '</td>';
-                    tbody.insertBefore(tr, tbody.firstChild);
-                } catch (err) {
-                    console.warn('Monitor SSE parse error:', err);
-                }
+                    if (data.rid) upsertRow(data);
+                } catch (err) { console.warn('Monitor SSE parse error:', err); }
             };
-            eventSource.onerror = function() {
-                console.warn('Monitor SSE connection error, reconnecting...');
-            };
-
-            function escapeHtml(s) {
-                var div = document.createElement('div');
-                div.textContent = s;
-                return div.innerHTML;
-            }
+            eventSource.onerror = function() { console.warn('Monitor SSE connection error'); };
         })();
 
         (function() {
-            var resizer = document.getElementById('monitor-resizer');
-            var topPanel = document.querySelector('.monitor-url-list');
-            var split = document.querySelector('.monitor-split');
-            var minTop = 120;
-            var minBottom = 120;
+            var splitter = document.getElementById('monitor-splitter');
+            var logList = document.querySelector('.log-list');
+            var toolbar = document.querySelector('.toolbar');
+            var pageHeader = document.querySelector('.header-gradient');
+            var minTop = 80;
+            var minBottom = 100;
 
-            resizer.addEventListener('mousedown', function(e) {
+            splitter.addEventListener('mousedown', function(e) {
                 e.preventDefault();
-                resizer.classList.add('dragging');
+                splitter.classList.add('dragging');
                 document.body.style.cursor = 'ns-resize';
                 document.body.style.userSelect = 'none';
 
                 function onMove(e) {
-                    var splitRect = split.getBoundingClientRect();
-                    var newHeight = e.clientY - splitRect.top;
+                    var topOffset = (pageHeader ? pageHeader.offsetHeight : 0) + (toolbar ? toolbar.offsetHeight : 0);
+                    var newHeight = e.clientY - topOffset;
                     if (newHeight < minTop) newHeight = minTop;
-                    if (newHeight > splitRect.height - minBottom) newHeight = splitRect.height - minBottom;
-                    topPanel.style.flex = '0 0 ' + newHeight + 'px';
-                    topPanel.style.minHeight = newHeight + 'px';
+                    var maxH = window.innerHeight - topOffset - minBottom - 60;
+                    if (newHeight > maxH) newHeight = maxH;
+                    logList.style.flex = '0 0 ' + newHeight + 'px';
+                    logList.style.minHeight = newHeight + 'px';
                 }
                 function onUp() {
-                    resizer.classList.remove('dragging');
+                    splitter.classList.remove('dragging');
                     document.body.style.cursor = '';
                     document.body.style.userSelect = '';
                     document.removeEventListener('mousemove', onMove);
