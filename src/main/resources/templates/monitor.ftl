@@ -6,6 +6,8 @@
     <title>Gotpache Console - Log Monitor</title>
     <!-- UIkit CSS -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/uikit@3.23.12/dist/css/uikit.min.css" />
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" crossorigin="anonymous" />
     <!-- UIkit JS -->
     <script src="https://cdn.jsdelivr.net/npm/uikit@3.23.12/dist/js/uikit.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/uikit@3.23.12/dist/js/uikit-icons.min.js"></script>
@@ -40,37 +42,68 @@
             border-bottom: 1px solid #e5e5e5;
             display: flex;
             gap: 8px;
+            align-items: center;
         }
-        .toolbar button {
-            padding: 6px 12px;
-            font-size: 13px;
-            cursor: pointer;
-            border: 1px solid #ccc;
-            border-radius: 4px;
+        .toolbar-btn {
+            width: 28px;
+            height: 28px;
+            padding: 0;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
             background: #fff;
+            border: 2px solid #757575;
+            cursor: pointer;
         }
-        .toolbar button:hover { background: #eee; }
-        .toolbar button.recording { border-color: #e74c3c; color: #e74c3c; }
+        .toolbar-btn:hover { background: #f5f5f5; }
+        .toolbar-btn.recording { border-color: #f0506e; }
+        .toolbar-btn .toolbar-icon {
+            font-size: 11px;
+            color: inherit;
+        }
+        .toolbar-btn.recording .toolbar-icon { color: #f0506e; }
+        .toolbar-btn .toolbar-icon.hidden { display: none !important; }
         .log-list {
             flex: 1 1 40%;
             min-height: 100px;
             overflow-y: auto;
-            padding: 8px;
             font-size: 12px;
-            font-family: monospace;
             background: #fff;
             border-bottom: 1px solid #e0e0e0;
         }
-        .log-item {
-            padding: 4px 6px;
-            cursor: pointer;
-            border-radius: 3px;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
+        .log-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-family: system-ui, -apple-system, sans-serif;
         }
-        .log-item:hover { background: #f5f5f5; }
-        .log-item.active { background: #e3f2fd; }
+        .log-table th {
+            text-align: left;
+            padding: 6px 10px;
+            background: #f1f3f4;
+            border-bottom: 1px solid #dadce0;
+            font-weight: 600;
+            color: #5f6368;
+            white-space: nowrap;
+            position: sticky;
+            top: 0;
+            z-index: 1;
+        }
+        .log-table td {
+            padding: 6px 10px;
+            border-bottom: 1px solid #eee;
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+        .log-table tbody tr:hover { background: #f8f9fa; }
+        .log-table tbody tr.active { background: #e8f0fe; }
+        .log-table .col-method { font-family: monospace; font-size: 11px; color: #5f6368; white-space: nowrap; }
+        .log-table .col-host { font-size: 11px; max-width: 120px; overflow: hidden; text-overflow: ellipsis; color: #5f6368; }
+        .log-table .col-path { font-family: monospace; font-size: 11px; overflow: hidden; text-overflow: ellipsis; }
+        .log-table .col-start { font-size: 11px; color: #5f6368; white-space: nowrap; }
+        .log-table .col-duration { font-size: 11px; color: #5f6368; white-space: nowrap; }
+        .log-table .col-code { color: #1e8e3e; font-weight: 500; white-space: nowrap; }
+        .log-table .col-size { font-size: 11px; color: #5f6368; white-space: nowrap; }
         .splitter {
             flex: 0 0 6px;
             background: #e0e0e0;
@@ -144,12 +177,31 @@
     <div class="main-content">
         <div class="app">
             <div class="toolbar">
-                <button type="button" id="monitor-start-btn">Start</button>
-                <button type="button" id="monitor-stop-btn" class="recording">Stop</button>
-                <button type="button" id="monitor-clear-btn">Clear</button>
+                <button type="button" class="toolbar-btn recording" id="monitor-start-stop-btn" title="Start/Stop">
+                    <i class="fa-solid fa-circle toolbar-icon hidden" id="monitor-start-icon"></i>
+                    <i class="fa-solid fa-square toolbar-icon" id="monitor-stop-icon"></i>
+                </button>
+                <button type="button" class="toolbar-btn" id="monitor-clear-btn" title="Clear">
+                    <i class="fa-solid fa-broom toolbar-icon"></i>
+                </button>
             </div>
 
-        <div class="log-list" id="monitor-log-list" style="flex: 0 0 300px; min-height: 300px;"></div>
+        <div class="log-list" id="monitor-log-list" style="flex: 0 0 300px; min-height: 300px;">
+            <table class="log-table">
+                <thead>
+                    <tr>
+                        <th>Method</th>
+                        <th>Host</th>
+                        <th>Path</th>
+                        <th>Start</th>
+                        <th>Duration</th>
+                        <th>Code</th>
+                        <th>Size</th>
+                    </tr>
+                </thead>
+                <tbody id="monitor-log-tbody"></tbody>
+            </table>
+        </div>
 
         <div class="splitter" id="monitor-splitter"></div>
 
@@ -174,9 +226,11 @@
     <script>
         (function() {
             var logList = document.getElementById('monitor-log-list');
+            var logTbody = document.getElementById('monitor-log-tbody');
             var clearBtn = document.getElementById('monitor-clear-btn');
-            var startBtn = document.getElementById('monitor-start-btn');
-            var stopBtn = document.getElementById('monitor-stop-btn');
+            var startStopBtn = document.getElementById('monitor-start-stop-btn');
+            var startIcon = document.getElementById('monitor-start-icon');
+            var stopIcon = document.getElementById('monitor-stop-icon');
             var isRecording = true;
 
             // Tab switching
@@ -193,30 +247,32 @@
 
             // Log list click
             logList.addEventListener('click', function(e) {
-                var item = e.target.closest('.log-item');
-                if (item) {
-                    document.querySelectorAll('.log-item').forEach(function(i) { i.classList.remove('active'); });
-                    item.classList.add('active');
-                    populateDetail(item.getAttribute('data-rid'));
+                var row = e.target.closest('tr[data-rid]');
+                if (row) {
+                    logTbody.querySelectorAll('tr[data-rid]').forEach(function(r) { r.classList.remove('active'); });
+                    row.classList.add('active');
+                    populateDetail(row.getAttribute('data-rid'));
                 }
             });
 
             clearBtn.addEventListener('click', function() {
-                logList.innerHTML = '';
+                if (logTbody) logTbody.innerHTML = '';
                 ridStartMap = {};
                 ridRowData = {};
                 populateDetail(null);
             });
 
-            startBtn.addEventListener('click', function() {
-                isRecording = true;
-                startBtn.classList.remove('recording');
-                stopBtn.classList.add('recording');
-            });
-            stopBtn.addEventListener('click', function() {
-                isRecording = false;
-                startBtn.classList.add('recording');
-                stopBtn.classList.remove('recording');
+            startStopBtn.addEventListener('click', function() {
+                isRecording = !isRecording;
+                if (isRecording) {
+                    startIcon.classList.add('hidden');
+                    stopIcon.classList.remove('hidden');
+                    startStopBtn.classList.add('recording');
+                } else {
+                    startIcon.classList.remove('hidden');
+                    stopIcon.classList.add('hidden');
+                    startStopBtn.classList.remove('recording');
+                }
             });
 
             var ridStartMap = {};
@@ -268,33 +324,59 @@
                 if (parts.length >= 2) return parts[1];
                 return null;
             }
+            function formatTime(ms) {
+                if (ms == null || ms < 0) return '-';
+                if (ms < 1000) return ms + ' ms';
+                return (ms / 1000).toFixed(2) + ' s';
+            }
             function formatStart(ts) {
-                if (ts == null || ts <= 0) return '--:--:--';
+                if (ts == null || ts <= 0) return '-';
                 var d = new Date(ts);
                 return ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2) + ':' + ('0' + d.getSeconds()).slice(-2) + '.' + ('00' + d.getMilliseconds()).slice(-3);
             }
-            function findLogItemByRid(rid) {
-                return logList.querySelector('.log-item[data-rid="' + rid + '"]');
-            }
-            function buildLogText(rowData) {
-                var method = rowData.method || '-';
-                var path = rowData.path || '/';
-                var code = rowData.code || '-';
-                var time = formatStart(rowData.startTs);
-                return '[' + time + '] ' + method + ' ' + path + (code !== '-' ? ' \u2192 ' + code : '');
-            }
-            function addLogItem(rid, text) {
+            function escapeHtml(s) {
                 var div = document.createElement('div');
-                div.className = 'log-item';
-                div.setAttribute('data-rid', rid);
-                div.textContent = text;
-                logList.insertBefore(div, logList.firstChild);
+                div.textContent = String(s);
+                return div.innerHTML;
             }
-            function updateLogItem(item, text) {
-                if (item) item.textContent = text;
+            function findRowByRid(rid) {
+                return logTbody ? logTbody.querySelector('tr[data-rid="' + rid + '"]') : null;
+            }
+            function buildDisplay(rowData) {
+                return {
+                    method: rowData.method || '-',
+                    host: rowData.host || '-',
+                    path: rowData.path || '/',
+                    start: formatStart(rowData.startTs),
+                    duration: formatTime(rowData.timeMs),
+                    code: rowData.code || '-',
+                    size: (rowData.size != null) ? rowData.size + ' B' : '-'
+                };
+            }
+            function addRow(rid, display) {
+                var tr = document.createElement('tr');
+                tr.setAttribute('data-rid', rid);
+                tr.innerHTML = '<td class="col-method">' + escapeHtml(display.method) + '</td>' +
+                    '<td class="col-host">' + escapeHtml(display.host) + '</td>' +
+                    '<td class="col-path">' + escapeHtml(display.path) + '</td>' +
+                    '<td class="col-start">' + escapeHtml(display.start) + '</td>' +
+                    '<td class="col-duration">' + escapeHtml(display.duration) + '</td>' +
+                    '<td class="col-code">' + escapeHtml(display.code) + '</td>' +
+                    '<td class="col-size">' + escapeHtml(display.size) + '</td>';
+                logTbody.insertBefore(tr, logTbody.firstChild);
+            }
+            function updateRow(row, display) {
+                if (!row) return;
+                row.querySelector('.col-method').textContent = display.method;
+                row.querySelector('.col-host').textContent = display.host;
+                row.querySelector('.col-path').textContent = display.path;
+                row.querySelector('.col-start').textContent = display.start;
+                row.querySelector('.col-duration').textContent = display.duration;
+                row.querySelector('.col-code').textContent = display.code;
+                row.querySelector('.col-size').textContent = display.size;
             }
             function upsertRow(data) {
-                if (!logList || !isRecording) return;
+                if (!logTbody || !isRecording) return;
                 var rid = data.rid || '';
                 if (!rid) return;
                 var type = data.type || '';
@@ -342,12 +424,12 @@
                 }
 
                 var rowData = ridRowData[rid] || {};
-                var text = buildLogText(rowData);
-                var item = findLogItemByRid(rid);
-                if (item) {
-                    updateLogItem(item, text);
+                var display = buildDisplay(rowData);
+                var row = findRowByRid(rid);
+                if (row) {
+                    updateRow(row, display);
                 } else {
-                    addLogItem(rid, text);
+                    addRow(rid, display);
                 }
             }
 
