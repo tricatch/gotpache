@@ -8,10 +8,12 @@ import freemarker.template.TemplateException;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStreamWriter;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Properties;
 import tricatch.gotpache.cfg.Config;
 
 public class FreeMarkerUtil {
@@ -67,13 +69,31 @@ public class FreeMarkerUtil {
     }
 
     /**
+     * Load version from version.properties (built from build.gradle)
+     */
+    private static String loadVersionFromProperties() {
+        try (InputStream is = FreeMarkerUtil.class.getResourceAsStream("/version.properties")) {
+            if (is != null) {
+                Properties props = new Properties();
+                props.load(is);
+                String v = props.getProperty("version");
+                if (v != null && !v.isEmpty() && !v.contains("${")) return v;
+            }
+        } catch (IOException ignored) {
+        }
+        return null;
+    }
+
+    /**
      * Create common data model with version and server name
+     * Version is read from version.properties (build.gradle) with fallback to config
      * @param config Configuration object
      * @return Data model map
      */
     public static Map<String, Object> createDataModel(Config config) {
         Map<String, Object> dataModel = new HashMap<>();
-        dataModel.put("version", config.getVersion());
+        String version = loadVersionFromProperties();
+        dataModel.put("version", version);
         dataModel.put("serverName", config.getServerName());
         return dataModel;
     }

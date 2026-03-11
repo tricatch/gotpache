@@ -68,7 +68,7 @@
             flex: 1 1 40%;
             min-height: 100px;
             overflow-y: auto;
-            font-size: 12px;
+            font-size: 13px;
             background: #fff;
             border-bottom: 1px solid #e0e0e0;
         }
@@ -97,13 +97,13 @@
         }
         .log-table tbody tr:hover { background: #f8f9fa; }
         .log-table tbody tr.active { background: #e8f0fe; }
-        .log-table .col-method { font-family: monospace; font-size: 11px; color: #5f6368; white-space: nowrap; }
-        .log-table .col-host { font-size: 11px; max-width: 120px; overflow: hidden; text-overflow: ellipsis; color: #5f6368; }
-        .log-table .col-path { font-family: monospace; font-size: 11px; overflow: hidden; text-overflow: ellipsis; }
-        .log-table .col-start { font-size: 11px; color: #5f6368; white-space: nowrap; }
-        .log-table .col-duration { font-size: 11px; color: #5f6368; white-space: nowrap; }
+        .log-table .col-method { font-family: monospace; font-size: 12px; color: #5f6368; white-space: nowrap; }
+        .log-table .col-host { font-size: 12px; max-width: 120px; overflow: hidden; text-overflow: ellipsis; color: #5f6368; }
+        .log-table .col-path { font-family: monospace; font-size: 12px; overflow: hidden; text-overflow: ellipsis; }
+        .log-table .col-start { font-size: 12px; color: #5f6368; white-space: nowrap; }
+        .log-table .col-duration { font-size: 12px; color: #5f6368; white-space: nowrap; }
         .log-table .col-code { color: #1e8e3e; font-weight: 500; white-space: nowrap; }
-        .log-table .col-size { font-size: 11px; color: #5f6368; white-space: nowrap; }
+        .log-table .col-size { font-size: 12px; color: #5f6368; white-space: nowrap; }
         .splitter {
             flex: 0 0 6px;
             background: #e0e0e0;
@@ -147,7 +147,7 @@
             overflow-y: scroll;
             overflow-x: hidden;
             padding: 8px 12px;
-            font-size: 12px;
+            font-size: 13px;
             font-family: monospace;
             background: #fff;
             white-space: pre-wrap;
