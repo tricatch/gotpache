@@ -47,16 +47,7 @@ public class HttpEventMonitorConsumer implements HttpEventConsumer {
             return;
         }
         try {
-            Map<String, Object> data = new LinkedHashMap<>();
-            data.put("name", "/");
-            data.put("method", "-");
-            data.put("status", "-");
-            data.put("type", event.getType() != null ? event.getType().name() : "fetch");
-            data.put("initiator", "-");
-            data.put("size", event.getBody() != null ? event.getBody().length : "-");
-            data.put("time", event.getTimestamp());
-
-            String json = JsonUtil.pretty(data).replace("\n", "\ndata: ");
+            String json = JsonUtil.toJson(event).replace("\n", "\ndata: ");
             String sse = "data: " + json + "\n\n";
             out.write(sse.getBytes(StandardCharsets.UTF_8));
             out.flush();

@@ -122,13 +122,6 @@ public class HttpEventManager {
     }
 
     /**
-     * Initialize HttpEventManager with default worker count (6)
-     */
-    public static synchronized void initialize() {
-        initialize(DEFAULT_WORKER_COUNT);
-    }
-
-    /**
      * Initialize HttpEventManager with custom worker count (4~8)
      */
     public static synchronized void initialize(int workerCount) {
