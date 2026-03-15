@@ -11,6 +11,10 @@ apache/nginx의 복잡한 기능을 가지고 있지 않지만, ProxyPass와 유
 
 ### Release Note
 
+#### v0.8.0
+* Monitor 추가 : 중계 요청/응답을 모니터링
+
+
 #### v0.7.0
 * Keep-Alive 로 동작할때 대상서버가 이전 연결과 다르면 소켓을 다시 열도록 수정
 
@@ -83,7 +87,7 @@ apache/nginx의 복잡한 기능을 가지고 있지 않지만, ProxyPass와 유
 ## CONSOLE
 * http://{127.0.0.1 or ip}:36912
 <img src="https://velog.velcdn.com/images/tricatch/post/685e8cd2-51a4-4dca-8805-fd2e1667b1da/image.png" />
-
+<img src="https://velog.velcdn.com/images/tricatch/post/e2293374-8206-4654-badd-3c2530fc6219/image.png" />
 <br>
 <br>
 
