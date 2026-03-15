@@ -46,7 +46,9 @@ public class CmdMonitorEvent implements SseCommand {
 
         OutputStream out = exchange.getResponseBody();
 
-        logger.debug( "HEMC[{}] - CONNECT", channelId );
+        if( logger.isDebugEnabled()) {
+            logger.debug("HEMC[{}] - CONNECT", channelId);
+        }
 
         try {
             out.write(": connected\n\n".getBytes(StandardCharsets.UTF_8));

@@ -180,7 +180,9 @@ public class HttpEventManager {
 
         clientConsumers.put(clientId, channelConsumers);
 
-        logger.debug("Added subscriber for clientId={} / channelId={}", clientId, channelId);
+        if( logger.isDebugEnabled() ) {
+            logger.debug("Added subscriber for clientId={} / channelId={}", clientId, channelId);
+        }
     }
 
     public void removeEventConsumer(HttpEventConsumer consumer){
@@ -196,7 +198,9 @@ public class HttpEventManager {
 
         channelConsumers.remove(channelId);
 
-        logger.debug("Removed subscriber for clientId={} / channelId={}", clientId, channelId);
+        if( logger.isDebugEnabled() ) {
+            logger.debug("Removed subscriber for clientId={} / channelId={}", clientId, channelId);
+        }
 
         if( channelConsumers.isEmpty() ){
             clientConsumers.remove(clientId);
