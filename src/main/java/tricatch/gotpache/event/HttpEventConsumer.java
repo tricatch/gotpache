@@ -1,5 +1,7 @@
 package tricatch.gotpache.event;
 
+import java.io.IOException;
+
 /**
  * Interface for HTTP event consumer
  * Each clientId can have its own consumer implementation
@@ -11,28 +13,17 @@ public interface HttpEventConsumer {
      * @return clientId
      */
     String getClientId();
-    
+
     /**
-     * Start consuming HTTP events
-     * Called when consumer is registered
+     * Get channelID that this consumer handles
+     * @return channelId
      */
-    void start();
+    String getChannelId();
     
+
     /**
-     * Stop consuming HTTP events
-     * Called when consumer is unregistered
-     */
-    void stop();
-    
-    /**
-     * Enqueue an HTTP event for processing
+     * Process an HTTP event directly (synchronous)
      * @param event HTTP event to process
      */
-    void enqueue(HttpEvent event);
-    
-    /**
-     * Check if consumer is running
-     * @return true if running, false otherwise
-     */
-    boolean isRunning();
+    void process(HttpEvent event) throws IOException;
 }

@@ -2,146 +2,228 @@ package tricatch.gotpache.event;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import tricatch.gotpache.event.consumer.HttpEventDropConsumer;
 
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
+import java.io.IOException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.TimeUnit;
 
 /**
- * Manager for HTTP event consumers
- * Handles registration, unregistration, and event routing
+ * Manager for HTTP event pipeline
+ * 
+ * Flow: Request → HttpEvent → EventQueue → WorkerPool → IP Subscriber Map / DropConsumer
+ * 
+ * - EventQueue: Single shared queue for HttpEvents
+ * - WorkerPool: 4~8 threads consuming from queue
+ * - IP Subscriber Map: Registered consumers per client IP
+ * - DropConsumer: Single instance for unregistered IPs
  */
 public class HttpEventManager {
-    
+
     private static final Logger logger = LoggerFactory.getLogger(HttpEventManager.class);
-    
+
+    private static final int DEFAULT_WORKER_COUNT = 6;
+    private static final int MIN_WORKER_COUNT = 4;
+    private static final int MAX_WORKER_COUNT = 8;
+
     private static HttpEventManager instance;
-    private final Map<String, HttpEventConsumer> clientConsumers;
-    private final HttpEventConsumerFactory consumerFactory;
-    
-    private HttpEventManager(HttpEventConsumerFactory factory) {
-        this.clientConsumers = new ConcurrentHashMap<>();
-        this.consumerFactory = factory;
+
+    private final EventQueue eventQueue;
+    private final ClientConsumers clientConsumers;
+    private final HttpEventConsumer defaultConsumer;
+    private final ExecutorService workerPool;
+    private volatile boolean running = false;
+
+    private HttpEventManager(int workerCount) {
+        this.eventQueue = new EventQueue();
+        this.clientConsumers = new ClientConsumers();
+        this.defaultConsumer = new HttpEventDropConsumer();
+
+        int workers = Math.max(MIN_WORKER_COUNT, Math.min(MAX_WORKER_COUNT, workerCount));
+        this.workerPool = Executors.newFixedThreadPool(workers, new ThreadFactory() {
+            private int counter = 0;
+
+            @Override
+            public Thread newThread(Runnable r) {
+                Thread t = new Thread(r, "HttpEventWorker-" + (++counter));
+                t.setDaemon(true);
+                return t;
+            }
+        });
+
+        startWorkers(workers);
+        logger.info("HttpEventManager initialized: EventQueue → WorkerPool({} threads) → IP Subscriber / DropConsumer", workers);
     }
-    
+
+    private void startWorkers(int count) {
+        running = true;
+        for (int i = 0; i < count; i++) {
+            workerPool.execute(this::workerLoop);
+        }
+    }
+
     /**
-     * Initialize HttpEventManager with factory
+     * Worker loop: take from EventQueue → dispatch to IP Subscriber or DropConsumer
      */
-    public static synchronized void initialize(HttpEventConsumerFactory factory) {
+    private void workerLoop() {
+        while (running) {
+            try {
+                HttpEvent event = eventQueue.take();
+                dispatch(event);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                break;
+            } catch (Exception e) {
+                logger.error("Worker error: {}", e.getMessage(), e);
+            }
+        }
+    }
+
+    /**
+     * Dispatch event: registered IP → Subscriber, else → DropConsumer.
+     * Also broadcast to all monitor consumers (SSE).
+     */
+    private void dispatch(HttpEvent event) throws IOException {
+        if (event == null || event.getClientId() == null) {
+            logger.warn("Invalid HttpEvent: {}", event);
+            return;
+        }
+
+        String clientId = event.getClientId();
+
+        ChannelConsumers channelConsumers = clientConsumers.get(clientId);
+
+        if (channelConsumers == null) {
+            defaultConsumer.process(event);
+            return;
+        }
+
+        if (channelConsumers.isEmpty()){
+            clientConsumers.remove(clientId);
+            defaultConsumer.process(event);
+            return;
+        }
+
+        for (HttpEventConsumer consumer : channelConsumers.values()) {
+
+            try {
+                consumer.process(event);
+            } catch (Exception e) {
+                clientConsumers.remove(clientId);
+            }
+
+        }
+    }
+
+    /**
+     * Initialize HttpEventManager with custom worker count (4~8)
+     */
+    public static synchronized void initialize(int workerCount) {
         if (instance != null) {
             logger.warn("HttpEventManager already initialized");
             return;
         }
-        instance = new HttpEventManager(factory);
-        logger.info("HttpEventManager initialized");
+        instance = new HttpEventManager(workerCount);
     }
-    
+
     /**
-     * Get singleton instance
+     * Get singleton instance (lazy init with default)
      */
     public static HttpEventManager getInstance() {
         if (instance == null) {
             synchronized (HttpEventManager.class) {
                 if (instance == null) {
-                    instance = new HttpEventManager(new DefaultHttpEventConsumerFactory());
-                    logger.info("HttpEventManager initialized with default factory");
+                    instance = new HttpEventManager(DEFAULT_WORKER_COUNT);
+                    logger.info("HttpEventManager initialized with default worker count");
                 }
             }
         }
         return instance;
     }
-    
+
     /**
-     * Enqueue HTTP event
-     * If no consumer is registered for clientId, use DropConsumer to drop the event
-     * All events are queued and processed by consumer threads
+     * Enqueue HttpEvent to pipeline
+     * Request → HttpEvent 생성 → EventQueue → WorkerPool → IP Subscriber / DropConsumer
      */
     public void enqueue(HttpEvent event) {
         if (event == null || event.getClientId() == null) {
-            logger.warn("Invalid HTTP event: {}", event);
+            logger.warn("Invalid HttpEvent: {}", event);
             return;
         }
-        
-        HttpEventConsumer consumer = clientConsumers.get(event.getClientId());
-        
-        if (consumer == null) {
-            // No consumer registered, get or create DropConsumer
-            consumer = clientConsumers.computeIfAbsent(
-                event.getClientId(),
-                k -> {
-                    DropHttpEventConsumer dropConsumer = new DropHttpEventConsumer(k);
-                    dropConsumer.start();
-                    logger.debug("Created and started drop consumer for clientId: {}", k);
-                    return dropConsumer;
-                }
-            );
+
+        if( logger.isDebugEnabled() ) logger.debug( "EventQueue, cid={}, rid={}, type={}", event.getClientId(), event.getRid(), event.getType());
+
+        if (!eventQueue.offer(event)) {
+            logger.warn("EventQueue full, dropping event: clientId={}, rid={}", event.getClientId(), event.getRid());
         }
-        
-        // Enqueue event to consumer's queue (will be processed by consumer thread)
-        consumer.enqueue(event);
     }
-    
+
     /**
-     * Register consumer for specific clientId
+     * Add subscriber for IP (clientId)
      */
-    public void registerConsumer(String clientId, HttpEventConsumer consumer) {
-        if (clientId == null || consumer == null) {
+    public void addEventConsumer(HttpEventConsumer consumer) {
+
+        if (consumer == null) {
             throw new IllegalArgumentException("clientId and consumer cannot be null");
         }
-        
-        if (!clientId.equals(consumer.getClientId())) {
-            throw new IllegalArgumentException(
-                "ClientId mismatch: expected " + clientId + ", got " + consumer.getClientId());
-        }
-        
-        HttpEventConsumer existing = clientConsumers.putIfAbsent(clientId, consumer);
-        if (existing != null) {
-            throw new IllegalStateException("Consumer already exists for clientId: " + clientId);
-        }
-        consumer.start();
-        logger.debug("Registered consumer for clientId: {}", clientId);
-    }
-    
-    /**
-     * Unregister consumer for specific clientId
-     */
-    public void unregisterConsumer(String clientId) {
-        if (clientId == null) {
-            return;
-        }
-        
-        HttpEventConsumer consumer = clientConsumers.remove(clientId);
-        if (consumer != null) {
-            consumer.stop();
-            logger.debug("Unregistered consumer for clientId: {}", clientId);
+
+        String clientId = consumer.getClientId();
+        String channelId = consumer.getChannelId();
+
+        ChannelConsumers channelConsumers = clientConsumers.get(clientId);
+
+        if( channelConsumers==null ) channelConsumers = new ChannelConsumers();
+
+        channelConsumers.put(channelId, consumer);
+
+        clientConsumers.put(clientId, channelConsumers);
+
+        if( logger.isDebugEnabled() ) {
+            logger.debug("Added subscriber for clientId={} / channelId={}", clientId, channelId);
         }
     }
-    
-    /**
-     * Get consumer for clientId
-     */
-    public HttpEventConsumer getConsumer(String clientId) {
-        return clientConsumers.get(clientId);
+
+    public void removeEventConsumer(HttpEventConsumer consumer){
+
+        if (consumer == null ) return;
+
+        String clientId = consumer.getClientId();
+        String channelId = consumer.getChannelId();
+
+        ChannelConsumers channelConsumers = clientConsumers.get(clientId);
+
+        if( channelConsumers==null ) return;
+
+        channelConsumers.remove(channelId);
+
+        if( logger.isDebugEnabled() ) {
+            logger.debug("Removed subscriber for clientId={} / channelId={}", clientId, channelId);
+        }
+
+        if( channelConsumers.isEmpty() ){
+            clientConsumers.remove(clientId);
+        }
     }
-    
+
     /**
-     * Check if consumer exists for clientId
-     */
-    public boolean hasConsumer(String clientId) {
-        return clientConsumers.containsKey(clientId);
-    }
-    
-    /**
-     * Shutdown all consumers
+     * Shutdown pipeline
      */
     public void shutdown() {
-        logger.info("Shutting down all HTTP event consumers");
-        for (Map.Entry<String, HttpEventConsumer> entry : clientConsumers.entrySet()) {
-            try {
-                entry.getValue().stop();
-            } catch (Exception e) {
-                logger.error("Error stopping consumer for clientId: {}", entry.getKey(), e);
+        logger.info("Shutting down HttpEventManager");
+        running = false;
+
+        workerPool.shutdown();
+        try {
+            if (!workerPool.awaitTermination(10, TimeUnit.SECONDS)) {
+                workerPool.shutdownNow();
             }
+        } catch (InterruptedException e) {
+            workerPool.shutdownNow();
+            Thread.currentThread().interrupt();
         }
+
         clientConsumers.clear();
     }
 }

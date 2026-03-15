@@ -121,7 +121,7 @@ public class PassRequestExecutor implements Stopable {
                     return;
                 }
 
-                // Enqueue REQ header HTTP event
+                // Enqueue REQ header HttpEvent
                 HttpEvent reqHeaderEvent = new HttpEvent(this.clientId, this.rid, HttpEventType.REQ_HEADER);
                 reqHeaderEvent.setHeaders(requestHeaders);
                 HttpEventManager.getInstance().enqueue(reqHeaderEvent);

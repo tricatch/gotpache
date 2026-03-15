@@ -81,7 +81,7 @@ public class PassResponseExecutor implements Stopable {
                     );
                 }
 
-                // Enqueue RES header HTTP event
+                // Enqueue RES header HttpEvent
                 String clientId = this.passRequestExecutor.getClientId();
                 HttpEvent resHeaderEvent = new HttpEvent(clientId, this.rid, HttpEventType.RES_HEADER);
                 resHeaderEvent.setHeaders(responseHeaders);

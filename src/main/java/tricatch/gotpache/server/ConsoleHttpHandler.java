@@ -8,6 +8,7 @@ import tricatch.gotpache.cfg.Config;
 import tricatch.gotpache.console.ConsoleCommand;
 import tricatch.gotpache.console.ConsoleResponse;
 import tricatch.gotpache.console.ConsoleResponseBuilder;
+import tricatch.gotpache.console.SseCommand;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -52,6 +53,11 @@ public class ConsoleHttpHandler implements HttpHandler {
             ConsoleResponse res;
 
             if (cmd != null) {
+                if (cmd instanceof SseCommand) {
+                    ((SseCommand) cmd).executeSse(exchange);
+                    return;
+                }
+
                 String method = exchange.getRequestMethod();
                 
                 Map<String, String> params = new HashMap<>();
