@@ -582,30 +582,54 @@
                     return JSON.stringify(obj, null, 2);
                 } catch (e) { return str; }
             }
-            function parseQueryString(path) {
-                if (!path || typeof path !== 'string') return null;
-                var idx = path.indexOf('?');
-                if (idx < 0) return null;
-                var qs = path.substring(idx + 1);
-                if (!qs) return null;
+            function parseUrlEncoded(str) {
+                if (!str || typeof str !== 'string') return null;
+                str = str.trim();
+                if (!str) return null;
                 var result = [];
-                var pairs = qs.split('&');
+                var pairs = str.split('&');
                 for (var i = 0; i < pairs.length; i++) {
                     var eq = pairs[i].indexOf('=');
                     var name = eq >= 0 ? pairs[i].substring(0, eq) : pairs[i];
                     var value = eq >= 0 ? pairs[i].substring(eq + 1) : '';
                     try {
                         name = decodeURIComponent(name.replace(/\+/g, ' '));
+                    } catch (e) { name = name.replace(/\+/g, ' '); }
+                    try {
                         value = decodeURIComponent(value.replace(/\+/g, ' '));
-                    } catch (e) {}
+                    } catch (e) { value = value.replace(/\+/g, ' '); }
                     result.push({ name: name, value: value });
                 }
                 return result.length ? result : null;
+            }
+            function parseQueryString(path) {
+                if (!path || typeof path !== 'string') return null;
+                var idx = path.indexOf('?');
+                if (idx < 0) return null;
+                return parseUrlEncoded(path.substring(idx + 1));
             }
             function formatQueryStringDisplay(path) {
                 var params = parseQueryString(path);
                 if (!params || params.length === 0) return null;
                 var lines = ['Query String'];
+                for (var i = 0; i < params.length; i++) {
+                    lines.push('  ' + params[i].name + ': ' + params[i].value);
+                }
+                return lines.join('\n');
+            }
+            function isFormUrlEncoded(headers) {
+                if (!headers || !Array.isArray(headers)) return false;
+                var ct = getHeaderValue(headers, 'Content-Type');
+                return ct && ct.toLowerCase().indexOf('application/x-www-form-urlencoded') >= 0;
+            }
+            function looksLikeFormUrlEncoded(str) {
+                return str && typeof str === 'string' && str.indexOf('&') >= 0 && str.indexOf('=') >= 0;
+            }
+            function formatFormDisplay(bodyStr) {
+                if (!bodyStr || typeof bodyStr !== 'string') return null;
+                var params = parseUrlEncoded(bodyStr);
+                if (!params || params.length === 0) return null;
+                var lines = ['Form Data'];
                 for (var i = 0; i < params.length; i++) {
                     lines.push('  ' + params[i].name + ': ' + params[i].value);
                 }
@@ -674,7 +698,16 @@
                 panels.cookie.textContent = cookieLines.length ? cookieLines.join('\n') : '(No cookies)';
 
                 var reqBody = decodeBody(d.reqBody);
-                var requestText = reqBody ? tryPrettyJson(reqBody) : null;
+                var requestText = null;
+                if (reqBody) {
+                    if (looksLikeFormUrlEncoded(reqBody)) {
+                        requestText = formatFormDisplay(reqBody) || reqBody;
+                    } else if (isFormUrlEncoded(reqHeaders)) {
+                        requestText = formatFormDisplay(reqBody) || reqBody;
+                    } else {
+                        requestText = tryPrettyJson(reqBody);
+                    }
+                }
                 if (!requestText && method.toUpperCase() === 'GET') {
                     requestText = formatQueryStringDisplay(path) || '(No payload for GET request)';
                 } else if (!requestText) {
