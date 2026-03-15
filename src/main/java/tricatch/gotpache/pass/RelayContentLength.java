@@ -15,6 +15,7 @@ import tricatch.gotpache.event.HttpEventType;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 
 /**
  * Class for handling content-length based HTTP body relay operations
@@ -35,9 +36,11 @@ public class RelayContentLength {
             logger.debug("{}, {}, Relaying content-length body: {} bytes", rid, flow, contentLength);
         }
 
+        boolean exceedsLimit = contentLength > HTTP.MONITOR_BODY_LIMIT;
+        ByteArrayOutputStream bodyCollector = exceedsLimit ? null : new ByteArrayOutputStream(contentLength);
+
         byte[] buffer = new byte[HTTP.BODY_BUFFER_SIZE];
         int remainingBytes = contentLength;
-        ByteArrayOutputStream bodyCollector = new ByteArrayOutputStream(contentLength);
 
         while (remainingBytes > 0) {
             int bytesToRead = Math.min(buffer.length, remainingBytes);
@@ -64,8 +67,16 @@ public class RelayContentLength {
 
         out.flush();
 
+        byte[] bodyForEvent;
+        if (exceedsLimit) {
+            String prefix = flow == HttpStream.Flow.REQ ? "Request" : "Response";
+            bodyForEvent = (prefix + " body exceeds " + (HTTP.MONITOR_BODY_LIMIT / 1024 / 1024) + "MB and is not supported for display.").getBytes(StandardCharsets.UTF_8);
+        } else {
+            bodyForEvent = bodyCollector.toByteArray();
+        }
+
         HttpEvent bodyEvent = new HttpEvent(clientId, rid, flow == HttpStream.Flow.REQ ? HttpEventType.REQ_BODY : HttpEventType.RES_BODY);
-        bodyEvent.setBody(bodyCollector.toByteArray());
+        bodyEvent.setBody(bodyForEvent);
         bodyEvent.setHttpStream(HttpStream.CONTENT_LENGTH);
         HttpEventManager.getInstance().enqueue(bodyEvent);
 

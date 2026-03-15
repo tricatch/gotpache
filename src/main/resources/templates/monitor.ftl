@@ -346,6 +346,12 @@
                 var d = new Date(ts);
                 return ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2) + ':' + ('0' + d.getSeconds()).slice(-2) + '.' + ('00' + d.getMilliseconds()).slice(-3);
             }
+            function formatSize(bytes) {
+                if (bytes == null || bytes < 0) return '-';
+                if (bytes < 1024) return bytes + ' B';
+                if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1).replace(/\.0$/, '') + ' KB';
+                return (bytes / (1024 * 1024)).toFixed(1).replace(/\.0$/, '') + ' MB';
+            }
             function escapeHtml(s) {
                 var div = document.createElement('div');
                 div.textContent = String(s);
@@ -362,7 +368,7 @@
                     start: formatStart(rowData.startTs),
                     duration: formatTime(rowData.timeMs),
                     code: rowData.code || '-',
-                    size: (rowData.size != null) ? rowData.size + ' B' : '-'
+                    size: formatSize(rowData.size)
                 };
             }
             function addRow(rid, display) {
@@ -408,6 +414,10 @@
                 var headers = data.headers;
                 var body = data.body;
 
+                if (type === 'REQ_BODY' || type === 'RES_HEADER' || type === 'RES_BODY') {
+                    if (!findRowByRid(rid)) return;
+                }
+
                 if (!ridRowData[rid]) ridRowData[rid] = { method: '-', host: '-', path: '/', startTs: timestamp };
 
                 if (type === 'REQ_HEADER') {
@@ -425,6 +435,8 @@
                     }
                     var host = getHeaderValue(headers, 'Host');
                     if (host) ridRowData[rid].host = host;
+                    var reqCl = getHeaderValue(headers, 'Content-Length');
+                    if (reqCl) { var n = parseInt(reqCl, 10); if (!isNaN(n)) ridRowData[rid].size = n; }
                 } else if (type === 'REQ_BODY' && body != null) {
                     ridRowData[rid].reqBody = body;
                 } else if (type === 'RES_HEADER') {
@@ -435,11 +447,15 @@
                     var startTs = ridStartMap[rid];
                     if (startTs != null) ridRowData[rid].startTs = ridRowData[rid].startTs || startTs;
                     ridRowData[rid].timeMs = (startTs != null && startTs > 0 && timestamp > 0) ? (timestamp - startTs) : null;
+                    var resCl = getHeaderValue(headers, 'Content-Length');
+                    if (resCl) { var n = parseInt(resCl, 10); if (!isNaN(n)) ridRowData[rid].size = n; }
                 } else if (type === 'RES_BODY' && body != null) {
                     ridRowData[rid].resBody = body;
-                    if (typeof body === 'string') {
-                        try { ridRowData[rid].size = atob(body).length; } catch (x) { ridRowData[rid].size = body.length; }
-                    } else if (Array.isArray(body)) ridRowData[rid].size = body.length;
+                    if (ridRowData[rid].size == null) {
+                        if (typeof body === 'string') {
+                            try { ridRowData[rid].size = atob(body).length; } catch (x) { ridRowData[rid].size = body.length; }
+                        } else if (Array.isArray(body)) ridRowData[rid].size = body.length;
+                    }
                 }
 
                 var rowData = ridRowData[rid] || {};
@@ -566,6 +582,35 @@
                     return JSON.stringify(obj, null, 2);
                 } catch (e) { return str; }
             }
+            function parseQueryString(path) {
+                if (!path || typeof path !== 'string') return null;
+                var idx = path.indexOf('?');
+                if (idx < 0) return null;
+                var qs = path.substring(idx + 1);
+                if (!qs) return null;
+                var result = [];
+                var pairs = qs.split('&');
+                for (var i = 0; i < pairs.length; i++) {
+                    var eq = pairs[i].indexOf('=');
+                    var name = eq >= 0 ? pairs[i].substring(0, eq) : pairs[i];
+                    var value = eq >= 0 ? pairs[i].substring(eq + 1) : '';
+                    try {
+                        name = decodeURIComponent(name.replace(/\+/g, ' '));
+                        value = decodeURIComponent(value.replace(/\+/g, ' '));
+                    } catch (e) {}
+                    result.push({ name: name, value: value });
+                }
+                return result.length ? result : null;
+            }
+            function formatQueryStringDisplay(path) {
+                var params = parseQueryString(path);
+                if (!params || params.length === 0) return null;
+                var lines = ['Query String'];
+                for (var i = 0; i < params.length; i++) {
+                    lines.push('  ' + params[i].name + ': ' + params[i].value);
+                }
+                return lines.join('\n');
+            }
 
             function populateDetail(rid) {
                 var empty = '(Select a request)';
@@ -629,7 +674,13 @@
                 panels.cookie.textContent = cookieLines.length ? cookieLines.join('\n') : '(No cookies)';
 
                 var reqBody = decodeBody(d.reqBody);
-                panels.request.textContent = reqBody ? tryPrettyJson(reqBody) : '(No payload for ' + method + ' request)';
+                var requestText = reqBody ? tryPrettyJson(reqBody) : null;
+                if (!requestText && method.toUpperCase() === 'GET') {
+                    requestText = formatQueryStringDisplay(path) || '(No payload for GET request)';
+                } else if (!requestText) {
+                    requestText = '(No payload for ' + method + ' request)';
+                }
+                panels.request.textContent = requestText;
 
                 if (isImageResponse(resHeaders, d.resBody) && d.resBody) {
                     var base64 = bodyToBase64(d.resBody);
