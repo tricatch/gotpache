@@ -16,6 +16,8 @@ public class HttpEvent {
     private byte[] body;                   // Body data (for REQ_BODY, RES_BODY)
     private long timestamp;                // Event occurrence time
     private HttpStream httpStream;         // Body stream type (CHUNKED, CONTENT_LENGTH, etc.)
+    private Integer opcode;                 // WebSocket opcode (for WS_FRAME)
+    private String wsDirection;            // WebSocket direction: "REQ" or "RES" (for WS_FRAME)
 
     public HttpEvent(String clientId, String rid, HttpEventType type) {
         this.clientId = clientId;
@@ -78,5 +80,21 @@ public class HttpEvent {
 
     public void setHttpStream(HttpStream httpStream) {
         this.httpStream = httpStream;
+    }
+
+    public Integer getOpcode() {
+        return opcode;
+    }
+
+    public void setOpcode(Integer opcode) {
+        this.opcode = opcode;
+    }
+
+    public String getWsDirection() {
+        return wsDirection;
+    }
+
+    public void setWsDirection(String wsDirection) {
+        this.wsDirection = wsDirection;
     }
 }

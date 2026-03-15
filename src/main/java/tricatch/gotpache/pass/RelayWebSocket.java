@@ -36,8 +36,6 @@ public class RelayWebSocket {
             );
         }
         
-        java.io.ByteArrayOutputStream bodyCollector = new java.io.ByteArrayOutputStream();
-        
         while (true) {
 
             WebSocketFrame frame = readFrame(in);
@@ -51,35 +49,34 @@ public class RelayWebSocket {
             logFrame(rid, flow, "READ", frame);
             writeFrame(out, frame);
             logFrame(rid, flow, "WRITE", frame);
-            
-            // Collect frame payload for logging
-            if (frame.getPayload() != null && frame.getPayload().length > 0) {
-                bodyCollector.write(frame.getPayload());
+
+            byte[] payloadForEvent = frame.getPayload();
+            if (payloadForEvent != null && payloadForEvent.length > 0 && frame.getMaskingKey() != null) {
+                payloadForEvent = unmaskPayload(payloadForEvent, frame.getMaskingKey());
             }
+            if (payloadForEvent == null) {
+                payloadForEvent = new byte[0];
+            }
+
+            HttpEvent frameEvent = new HttpEvent(clientId, rid, HttpEventType.WS_FRAME);
+            frameEvent.setBody(payloadForEvent);
+            frameEvent.setHttpStream(HttpStream.WEBSOCKET);
+            frameEvent.setOpcode(frame.getOpcode());
+            frameEvent.setWsDirection(flow == HttpStream.Flow.REQ ? "REQ" : "RES");
+            HttpEventManager.getInstance().enqueue(frameEvent);
 
             if (frame.getOpcode() == 0x8) {
                 if (logger.isDebugEnabled()) {
                     logger.debug("{}, {}, WebSocket close frame received - ending relay", rid, flow);
                 }
-                break; // close frame
+                break;
             }
         }
-        
+
         if (logger.isDebugEnabled()) {
-            logger.debug("{}, {}, WebSocket relay completed"
-                    , rid
-                    , flow
-            );
+            logger.debug("{}, {}, WebSocket relay completed", rid, flow);
         }
-        
-        // Enqueue body HttpEvent
-        HttpEvent bodyEvent = new HttpEvent(clientId, rid, 
-            flow == HttpStream.Flow.REQ ? HttpEventType.REQ_BODY : HttpEventType.RES_BODY);
-        bodyEvent.setBody(bodyCollector.toByteArray());
-        bodyEvent.setHttpStream(HttpStream.WEBSOCKET);
-        HttpEventManager.getInstance().enqueue(bodyEvent);
-        
-        // WebSocket relay completed, connection should be closed
+
         return HttpStream.Connection.CLOSE;
     }
 
@@ -215,6 +212,14 @@ public class RelayWebSocket {
         if (data.length > 16) sb.append(" ...");
 
         return sb.toString();
+    }
+
+    private static byte[] unmaskPayload(byte[] payload, byte[] maskingKey) {
+        byte[] result = new byte[payload.length];
+        for (int i = 0; i < payload.length; i++) {
+            result[i] = (byte) (payload[i] ^ maskingKey[i % 4]);
+        }
+        return result;
     }
 
     public static class WebSocketFrame {

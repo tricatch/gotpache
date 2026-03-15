@@ -159,6 +159,25 @@
             visibility: visible;
             pointer-events: auto;
         }
+        .ws-frame {
+            margin-bottom: 12px;
+            padding: 8px 10px;
+            background: #f8f9fa;
+            border-left: 4px solid #2196f3;
+            border-radius: 0 4px 4px 0;
+        }
+        .ws-frame .ws-frame-meta {
+            font-size: 11px;
+            color: #5f6368;
+            display: block;
+            margin-bottom: 4px;
+        }
+        .ws-frame .ws-frame-payload {
+            margin: 0;
+            font-size: 12px;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
     </style>
 </head>
 <body>
@@ -219,6 +238,7 @@
             <button type="button" data-tab="cookie">Cookie</button>
             <button type="button" data-tab="request">Request</button>
             <button type="button" data-tab="response">Response</button>
+            <button type="button" data-tab="websocket">WebSocket</button>
         </div>
 
         <div class="detail-content">
@@ -226,6 +246,7 @@
             <div id="detail-cookie" class="detail-panel">(Select a request)</div>
             <div id="detail-request" class="detail-panel">(Select a request)</div>
             <div id="detail-response" class="detail-panel">(Select a request)</div>
+            <div id="detail-websocket" class="detail-panel">(Select a request)</div>
         </div>
         </div>
     </div>
@@ -263,7 +284,8 @@
                 if (row) {
                     logTbody.querySelectorAll('tr[data-rid]').forEach(function(r) { r.classList.remove('active'); });
                     row.classList.add('active');
-                    populateDetail(row.getAttribute('data-rid'));
+                    selectedRid = row.getAttribute('data-rid');
+                    populateDetail(selectedRid);
                 }
             });
 
@@ -271,6 +293,7 @@
                 if (logTbody) logTbody.innerHTML = '';
                 ridStartMap = {};
                 ridRowData = {};
+                selectedRid = null;
                 populateDetail(null);
             });
 
@@ -289,6 +312,7 @@
 
             var ridStartMap = {};
             var ridRowData = {};
+            var selectedRid = null;
 
             function parseFirstHeaderLine(headers) {
                 if (!headers || !Array.isArray(headers) || headers.length === 0) return null;
@@ -414,11 +438,23 @@
                 var headers = data.headers;
                 var body = data.body;
 
-                if (type === 'REQ_BODY' || type === 'RES_HEADER' || type === 'RES_BODY') {
+                if (type === 'REQ_BODY' || type === 'RES_HEADER' || type === 'RES_BODY' || type === 'WS_FRAME') {
                     if (!findRowByRid(rid)) return;
                 }
 
                 if (!ridRowData[rid]) ridRowData[rid] = { method: '-', host: '-', path: '/', startTs: timestamp };
+
+                if (type === 'WS_FRAME') {
+                    if (!ridRowData[rid].wsFrames) ridRowData[rid].wsFrames = [];
+                    ridRowData[rid].wsFrames.push({
+                        opcode: data.opcode != null ? data.opcode : 0,
+                        direction: data.wsDirection || '-',
+                        body: body,
+                        timestamp: timestamp
+                    });
+                    if (rid === selectedRid) updateWebSocketPanel(rid);
+                    return;
+                }
 
                 if (type === 'REQ_HEADER') {
                     ridStartMap[rid] = timestamp;
@@ -636,13 +672,51 @@
                 return lines.join('\n');
             }
 
+            var OPCODE_NAMES = { 0: 'continuation', 1: 'text', 2: 'binary', 8: 'close', 9: 'ping', 10: 'pong' };
+            function formatWsFramePayload(body) {
+                if (!body) return '';
+                var str = decodeBody(body);
+                if (str && /^[\x20-\x7E\r\n\t]*$/.test(str)) return str;
+                var bytes = bodyToBytes(body);
+                if (!bytes || bytes.length === 0) return '(empty)';
+                var hex = '';
+                for (var i = 0; i < Math.min(bytes.length, 64); i++) hex += ('0' + bytes[i].toString(16)).slice(-2) + ' ';
+                return bytes.length > 64 ? hex + '...' : hex.trim();
+            }
+            function renderWebSocketFrames(wsFrames) {
+                if (!wsFrames || wsFrames.length === 0) return '(No WebSocket frames)';
+                var html = [];
+                for (var i = 0; i < wsFrames.length; i++) {
+                    var f = wsFrames[i];
+                    var dir = f.direction === 'REQ' ? 'Client →' : '← Server';
+                    var op = OPCODE_NAMES[f.opcode] || ('0x' + f.opcode);
+                    var time = formatStart(f.timestamp);
+                    var payload = formatWsFramePayload(f.body);
+                    html.push('<div class="ws-frame"><span class="ws-frame-meta">[' + time + '] ' + dir + ' ' + op + '</span><pre class="ws-frame-payload">' + escapeHtml(payload) + '</pre></div>');
+                }
+                return html.join('');
+            }
+            function updateWebSocketPanel(rid) {
+                var panel = document.getElementById('detail-websocket');
+                if (!panel) return;
+                if (!rid || !ridRowData[rid]) {
+                    panel.innerHTML = '(Select a request)';
+                    return;
+                }
+                var wsFrames = ridRowData[rid].wsFrames || [];
+                panel.innerHTML = renderWebSocketFrames(wsFrames);
+                panel.scrollTop = panel.scrollHeight;
+            }
+
             function populateDetail(rid) {
+                selectedRid = rid;
                 var empty = '(Select a request)';
                 var panels = {
                     header: document.getElementById('detail-header'),
                     cookie: document.getElementById('detail-cookie'),
                     request: document.getElementById('detail-request'),
-                    response: document.getElementById('detail-response')
+                    response: document.getElementById('detail-response'),
+                    websocket: document.getElementById('detail-websocket')
                 };
 
                 if (!rid || !ridRowData[rid]) {
@@ -650,6 +724,7 @@
                     panels.cookie.textContent = empty;
                     panels.request.textContent = empty;
                     panels.response.textContent = empty;
+                    if (panels.websocket) panels.websocket.innerHTML = empty;
                     return;
                 }
 
@@ -726,6 +801,10 @@
                 } else {
                     var resBody = decodeBody(d.resBody);
                     panels.response.textContent = resBody ? tryPrettyJson(resBody) : '(No response body)';
+                }
+
+                if (panels.websocket) {
+                    panels.websocket.innerHTML = renderWebSocketFrames(d.wsFrames || []);
                 }
             }
 
