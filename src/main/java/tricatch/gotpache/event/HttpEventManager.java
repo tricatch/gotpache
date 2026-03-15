@@ -93,11 +93,7 @@ public class HttpEventManager {
 
         String clientId = event.getClientId();
 
-        logger.debug( "XXXX - event - {}, {} / {}", event.getClientId(), event.getRid(), event.getType());
-
         ChannelConsumers channelConsumers = clientConsumers.get(clientId);
-
-        logger.debug( "XXXX - event - {}, channelConsumers={}", event.getClientId(), channelConsumers);
 
         if (channelConsumers == null) {
             defaultConsumer.process(event);

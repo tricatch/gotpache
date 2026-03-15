@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gotpache Console - Log Monitor</title>
+    <title>Gotpache Console - Monitor</title>
     <!-- UIkit CSS -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/uikit@3.23.12/dist/css/uikit.min.css" />
     <!-- Font Awesome -->
@@ -188,7 +188,7 @@
                 <div>
                     <h1 class="uk-heading-small uk-margin-remove">
                         <span uk-icon="icon: world; ratio: 1.5" class="uk-margin-small-right"></span>
-                        Log Monitor
+                        Monitor
                     </h1>
                     <p class="uk-margin-remove-top uk-text-meta">Select a request to view details</p>
                 </div>
