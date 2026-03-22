@@ -10,8 +10,6 @@ import tricatch.gotpache.util.JsonUtil;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
-import java.util.LinkedHashMap;
-import java.util.Map;
 
 /**
  * Monitor consumer for SSE. Receives all HttpEvents and emits JSON to OutputStream.
