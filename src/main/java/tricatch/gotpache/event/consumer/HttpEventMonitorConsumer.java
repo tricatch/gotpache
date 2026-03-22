@@ -10,6 +10,7 @@ import tricatch.gotpache.util.JsonUtil;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * Monitor consumer for SSE. Receives all HttpEvents and emits JSON to OutputStream.
@@ -22,11 +23,14 @@ public class HttpEventMonitorConsumer implements HttpEventConsumer {
     private final String clientId;
     private final String channelId;
     private final OutputStream out;
+    /** 직렬화: SSE keepalive 스레드와 HttpEvent 워커가 동일 스트림에 동시 쓰기하지 않도록 */
+    private final ReentrantLock writeLock;
 
-    public HttpEventMonitorConsumer(String clientId, String channelId, OutputStream out) {
+    public HttpEventMonitorConsumer(String clientId, String channelId, OutputStream out, ReentrantLock writeLock) {
         this.clientId = clientId;
         this.channelId = channelId;
         this.out = out;
+        this.writeLock = writeLock;
     }
 
     @Override
@@ -47,8 +51,13 @@ public class HttpEventMonitorConsumer implements HttpEventConsumer {
         try {
             String json = JsonUtil.toJson(event).replace("\n", "\ndata: ");
             String sse = "data: " + json + "\n\n";
-            out.write(sse.getBytes(StandardCharsets.UTF_8));
-            out.flush();
+            writeLock.lock();
+            try {
+                out.write(sse.getBytes(StandardCharsets.UTF_8));
+                out.flush();
+            } finally {
+                writeLock.unlock();
+            }
         } catch (JsonProcessingException e) {
             logger.debug("Failed to serialize event: {}", e.getMessage());
         } catch (IOException e) {
