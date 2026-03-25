@@ -60,7 +60,7 @@ public class ProxyPassConsole implements Runnable {
             HttpServer server = HttpServer.create(new InetSocketAddress(console.getPort()), 0);
 
             // Create HttpHandler for console commands
-            HttpHandler consoleHandler = new ConsoleHttpHandler(commands, config);
+            HttpHandler consoleHandler = new ConsoleHttpHandler(commands);
             
             // Register handler for all paths
             server.createContext("/", consoleHandler);

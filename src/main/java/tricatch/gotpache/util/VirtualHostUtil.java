@@ -1,25 +1,19 @@
 package tricatch.gotpache.util;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import tricatch.gotpache.cfg.Config;
 import tricatch.gotpache.cfg.attr.VirtualDomain;
 import tricatch.gotpache.cfg.attr.VirtualLocation;
 import tricatch.gotpache.server.VirtualHosts;
 import tricatch.gotpache.server.VirtualPath;
 
-import java.net.InetAddress;
 import java.net.MalformedURLException;
+import java.net.URI;
 import java.net.URL;
-import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Collections;
 import java.util.Comparator;
 
 public class VirtualHostUtil {
-
-    private static Logger logger = LoggerFactory.getLogger(VirtualHostUtil.class);
 
     public static VirtualHosts convert(List<VirtualDomain> virtualDomains) throws MalformedURLException {
 
@@ -39,7 +33,7 @@ public class VirtualHostUtil {
 
                 VirtualLocation virtualLocation = virtualLocationList.get(p);
 
-                URL target = new URL(virtualLocation.getHost());
+                URL target = URI.create(virtualLocation.getHost()).toURL();
                 List<String> pathList = virtualLocation.getPath();
 
                 for (int u = 0; u < pathList.size(); u++) {

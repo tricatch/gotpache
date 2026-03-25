@@ -4,7 +4,6 @@ import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import tricatch.gotpache.cfg.Config;
 import tricatch.gotpache.console.ConsoleCommand;
 import tricatch.gotpache.console.ConsoleResponse;
 import tricatch.gotpache.console.ConsoleResponseBuilder;
@@ -26,11 +25,9 @@ public class ConsoleHttpHandler implements HttpHandler {
     private static final Logger logger = LoggerFactory.getLogger(ConsoleHttpHandler.class);
 
     private final Map<String, ConsoleCommand> commands;
-    private final Config config;
 
-    public ConsoleHttpHandler(Map<String, ConsoleCommand> commands, Config config) {
+    public ConsoleHttpHandler(Map<String, ConsoleCommand> commands) {
         this.commands = commands;
-        this.config = config;
     }
 
     @Override

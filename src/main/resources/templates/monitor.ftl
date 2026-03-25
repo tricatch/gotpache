@@ -178,11 +178,27 @@
             white-space: pre-wrap;
             word-break: break-all;
         }
+        #monitor-page-header.monitor-header-compact.uk-section-small {
+            padding-top: 0.35rem;
+            padding-bottom: 0.35rem;
+        }
+        #monitor-page-header.monitor-header-compact h1.uk-heading-small {
+            font-size: 1.05rem;
+            line-height: 1.25;
+        }
+        #monitor-page-header.monitor-header-compact .uk-text-meta {
+            display: none;
+        }
+        #monitor-page-header.monitor-header-compact .uk-button {
+            padding: 0 10px;
+            line-height: 26px;
+            font-size: 12px;
+        }
     </style>
 </head>
 <body>
     <!-- Header Section (external - previous style) -->
-    <div class="header-gradient uk-section uk-section-small uk-light">
+    <div id="monitor-page-header" class="header-gradient uk-section uk-section-small uk-light">
         <div class="uk-container uk-container-large">
             <div class="uk-flex uk-flex-between uk-flex-middle">
                 <div>
@@ -257,6 +273,7 @@
         (function() {
             var logList = document.getElementById('monitor-log-list');
             var logTbody = document.getElementById('monitor-log-tbody');
+            var pageHeader = document.getElementById('monitor-page-header');
             var clearBtn = document.getElementById('monitor-clear-btn');
             var startStopBtn = document.getElementById('monitor-start-stop-btn');
             var startIcon = document.getElementById('monitor-start-icon');
@@ -289,12 +306,31 @@
                 }
             });
 
+            function resetMonitorPageHeader() {
+                if (!pageHeader) return;
+                pageHeader.removeAttribute('data-monitor-header-compact');
+                pageHeader.classList.remove('monitor-header-compact');
+                pageHeader.style.maxHeight = '';
+                pageHeader.style.overflow = '';
+            }
+            function applyMonitorPageHeaderCompact() {
+                if (!pageHeader || pageHeader.getAttribute('data-monitor-header-compact') === '1') return;
+                var fullH = pageHeader.offsetHeight;
+                if (fullH <= 0) return;
+                var targetH = Math.max(Math.round(fullH * 0.3), 44);
+                pageHeader.setAttribute('data-monitor-header-compact', '1');
+                pageHeader.classList.add('monitor-header-compact');
+                pageHeader.style.overflow = 'hidden';
+                pageHeader.style.maxHeight = targetH + 'px';
+            }
+
             clearBtn.addEventListener('click', function() {
                 if (logTbody) logTbody.innerHTML = '';
                 ridStartMap = {};
                 ridRowData = {};
                 selectedRid = null;
                 populateDetail(null);
+                resetMonitorPageHeader();
             });
 
             startStopBtn.addEventListener('click', function() {
@@ -417,6 +453,12 @@
                     }
                 }
                 logTbody.insertBefore(tr, insertBefore);
+                applyMonitorPageHeaderCompact();
+                if (logList && insertBefore === null) {
+                    requestAnimationFrame(function() {
+                        logList.scrollTop = logList.scrollHeight;
+                    });
+                }
             }
             function updateRow(row, display) {
                 if (!row) return;

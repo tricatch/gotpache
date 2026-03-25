@@ -5,8 +5,6 @@ import org.slf4j.LoggerFactory;
 
 import tricatch.gotpache.http.HTTP;
 import tricatch.gotpache.http.io.HttpStream;
-import tricatch.gotpache.http.io.HttpRequest;
-import tricatch.gotpache.http.io.HttpResponse;
 import tricatch.gotpache.http.io.HttpStreamReader;
 import tricatch.gotpache.http.io.HttpStreamWriter;
 import tricatch.gotpache.event.HttpEvent;

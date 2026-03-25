@@ -12,6 +12,7 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
+import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * SSE endpoint for /monitor/event.
@@ -45,28 +46,40 @@ public class CmdMonitorEvent implements SseCommand {
         exchange.sendResponseHeaders(200, 0);
 
         OutputStream out = exchange.getResponseBody();
+        ReentrantLock writeLock = new ReentrantLock();
 
         if( logger.isDebugEnabled()) {
             logger.debug("HEMC[{}] - CONNECT", channelId);
         }
 
         try {
-            out.write(": connected\n\n".getBytes(StandardCharsets.UTF_8));
-            out.flush();
+            writeLock.lock();
+            try {
+                out.write(": connected\n\n".getBytes(StandardCharsets.UTF_8));
+                out.flush();
+            } finally {
+                writeLock.unlock();
+            }
         } catch (IOException e) {
             logger.error(e.getMessage(), e);
             return;
         }
 
-        HttpEventMonitorConsumer consumer = new HttpEventMonitorConsumer(clientId, channelId, out);
+        HttpEventMonitorConsumer consumer = new HttpEventMonitorConsumer(clientId, channelId, out, writeLock);
         HttpEventManager.getInstance().addEventConsumer(consumer);
 
         try {
             // 5초 간격 keepalive - 프록시/로드밸런서 타임아웃(보통 30~60초) 전에 연결 유지
             for (;;) {
                 Thread.sleep(5000);
-                out.write(": keepalive\n\n".getBytes(StandardCharsets.UTF_8));
-                out.flush();
+                if (writeLock.tryLock()) {
+                    try {
+                        out.write(": keepalive\n\n".getBytes(StandardCharsets.UTF_8));
+                        out.flush();
+                    } finally {
+                        writeLock.unlock();
+                    }
+                }
             }
         } catch (InterruptedException e) {
             logger.error(e.getMessage(), e);
@@ -77,7 +90,12 @@ public class CmdMonitorEvent implements SseCommand {
         } finally {
             HttpEventManager.getInstance().removeEventConsumer(consumer);
             try {
-                out.close();
+                writeLock.lock();
+                try {
+                    out.close();
+                } finally {
+                    writeLock.unlock();
+                }
             } catch (IOException ignored) {
             }
         }
