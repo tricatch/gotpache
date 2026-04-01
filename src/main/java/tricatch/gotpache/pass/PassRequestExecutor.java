@@ -180,9 +180,12 @@ public class PassRequestExecutor implements Stopable {
                     serverIn = new HttpStreamReader(serverSocket.getInputStream(), HTTP.BODY_BUFFER_SIZE);
                     serverOut = new HttpStreamWriter(serverSocket.getOutputStream());
 
+                    String tName = Thread.currentThread().getName();
+                    if( tName.endsWith("x0") ) tName = tName.substring(0, tName.length()-1) + reqCounter;
+
                     child =  VThreadExecutor.run(
                             new PassResponseExecutor(this, serverIn, clientOut)
-                            , Thread.currentThread().getName() + "x" + reqCounter
+                            , tName
                         );
 
                 }

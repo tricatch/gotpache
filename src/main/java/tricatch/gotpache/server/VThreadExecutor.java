@@ -22,7 +22,7 @@ public class VThreadExecutor {
 
         long threadNumber = threadCounter.incrementAndGet();
 
-        Thread thread = Thread.ofVirtual().name("vt-pass-" + threadNumber).start(stopable);
+        Thread thread = Thread.ofVirtual().name("vt-pass-" + threadNumber +"x0").start(stopable);
 
         runningExecutors.put(thread.getName(), stopable);
 
