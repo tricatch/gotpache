@@ -306,13 +306,6 @@
                 }
             });
 
-            function resetMonitorPageHeader() {
-                if (!pageHeader) return;
-                pageHeader.removeAttribute('data-monitor-header-compact');
-                pageHeader.classList.remove('monitor-header-compact');
-                pageHeader.style.maxHeight = '';
-                pageHeader.style.overflow = '';
-            }
             function applyMonitorPageHeaderCompact() {
                 if (!pageHeader || pageHeader.getAttribute('data-monitor-header-compact') === '1') return;
                 var fullH = pageHeader.offsetHeight;
@@ -330,7 +323,6 @@
                 ridRowData = {};
                 selectedRid = null;
                 populateDetail(null);
-                resetMonitorPageHeader();
             });
 
             startStopBtn.addEventListener('click', function() {
