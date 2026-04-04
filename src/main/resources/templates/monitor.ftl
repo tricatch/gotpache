@@ -63,6 +63,9 @@
             color: inherit;
         }
         .toolbar-btn.recording .toolbar-icon { color: #f0506e; }
+        .toolbar-btn.event-log-on { border-color: #2196f3; }
+        .toolbar-btn.event-log-on .toolbar-icon { color: #2196f3; }
+        .toolbar-btn.toolbar-push-right { margin-left: auto; }
         .toolbar-btn .toolbar-icon.hidden { display: none !important; }
         .log-list {
             flex: 1 1 40%;
@@ -135,6 +138,7 @@
             background: #e8f0fe;
             border-bottom-color: #1967d2;
         }
+        .detail-tabs button.tab-push-right { margin-left: auto; }
         .detail-content {
             flex: 1 1 0;
             min-height: 0;
@@ -228,6 +232,9 @@
                 <button type="button" class="toolbar-btn" id="monitor-clear-btn" title="Clear">
                     <i class="fa-solid fa-broom toolbar-icon"></i>
                 </button>
+                <button type="button" class="toolbar-btn toolbar-push-right" id="monitor-event-log-btn" title="SSE event log (off)">
+                    <i class="fa-solid fa-bolt toolbar-icon"></i>
+                </button>
             </div>
 
         <div class="log-list" id="monitor-log-list" style="flex: 0 0 300px; min-height: 300px;">
@@ -255,6 +262,7 @@
             <button type="button" data-tab="request">Request</button>
             <button type="button" data-tab="response">Response</button>
             <button type="button" data-tab="websocket">WebSocket</button>
+            <button type="button" class="tab-push-right" data-tab="event">Event</button>
         </div>
 
         <div class="detail-content">
@@ -263,6 +271,7 @@
             <div id="detail-request" class="detail-panel">(Select a request)</div>
             <div id="detail-response" class="detail-panel">(Select a request)</div>
             <div id="detail-websocket" class="detail-panel">(Select a request)</div>
+            <div id="detail-event" class="detail-panel">(Event log off — enable via toolbar)</div>
         </div>
         </div>
     </div>
@@ -275,6 +284,7 @@
             var logTbody = document.getElementById('monitor-log-tbody');
             var pageHeader = document.getElementById('monitor-page-header');
             var clearBtn = document.getElementById('monitor-clear-btn');
+            var eventLogBtn = document.getElementById('monitor-event-log-btn');
             var startStopBtn = document.getElementById('monitor-start-stop-btn');
             var startIcon = document.getElementById('monitor-start-icon');
             var stopIcon = document.getElementById('monitor-stop-icon');
@@ -290,7 +300,11 @@
                     var panel = document.getElementById('detail-' + tab);
                     if (panel) {
                         panel.classList.add('active');
-                        panel.scrollTop = 0;
+                        if (tab === 'event') {
+                            panel.scrollTop = panel.scrollHeight;
+                        } else {
+                            panel.scrollTop = 0;
+                        }
                     }
                 });
             });
@@ -306,13 +320,6 @@
                 }
             });
 
-            function resetMonitorPageHeader() {
-                if (!pageHeader) return;
-                pageHeader.removeAttribute('data-monitor-header-compact');
-                pageHeader.classList.remove('monitor-header-compact');
-                pageHeader.style.maxHeight = '';
-                pageHeader.style.overflow = '';
-            }
             function applyMonitorPageHeaderCompact() {
                 if (!pageHeader || pageHeader.getAttribute('data-monitor-header-compact') === '1') return;
                 var fullH = pageHeader.offsetHeight;
@@ -324,14 +331,50 @@
                 pageHeader.style.maxHeight = targetH + 'px';
             }
 
+            var sseLogSeq = 0;
+            var sseLogLines = [];
+
             clearBtn.addEventListener('click', function() {
                 if (logTbody) logTbody.innerHTML = '';
                 ridStartMap = {};
                 ridRowData = {};
                 selectedRid = null;
+                clearEventLog();
                 populateDetail(null);
-                resetMonitorPageHeader();
             });
+
+            var isEventLogEnabled = false;
+            function getEventPanelEmptyPlaceholder() {
+                if (isEventLogEnabled) return '(No SSE messages yet)';
+                return '(Event log off — enable via toolbar)';
+            }
+            function syncEventLogToolbar() {
+                if (!eventLogBtn) return;
+                if (isEventLogEnabled) {
+                    eventLogBtn.classList.add('event-log-on');
+                    eventLogBtn.setAttribute('title', 'SSE event log (on)');
+                } else {
+                    eventLogBtn.classList.remove('event-log-on');
+                    eventLogBtn.setAttribute('title', 'SSE event log (off)');
+                }
+            }
+            function refreshEventPanelView() {
+                var panel = document.getElementById('detail-event');
+                if (!panel) return;
+                if (sseLogLines.length > 0) {
+                    panel.textContent = sseLogLines.join('\n\n');
+                } else {
+                    panel.textContent = getEventPanelEmptyPlaceholder();
+                }
+            }
+            if (eventLogBtn) {
+                eventLogBtn.addEventListener('click', function() {
+                    isEventLogEnabled = !isEventLogEnabled;
+                    syncEventLogToolbar();
+                    refreshEventPanelView();
+                });
+                syncEventLogToolbar();
+            }
 
             startStopBtn.addEventListener('click', function() {
                 isRecording = !isRecording;
@@ -349,6 +392,26 @@
             var ridStartMap = {};
             var ridRowData = {};
             var selectedRid = null;
+
+            function appendEventLog(raw) {
+                if (!isEventLogEnabled) return;
+                sseLogSeq++;
+                var stamp = new Date().toISOString();
+                var block = '--- ' + sseLogSeq + ' @ ' + stamp + ' ---\n' + String(raw);
+                sseLogLines.push(block);
+                var panel = document.getElementById('detail-event');
+                if (!panel) return;
+                panel.textContent = sseLogLines.join('\n\n');
+                requestAnimationFrame(function() {
+                    var p = document.getElementById('detail-event');
+                    if (p) p.scrollTop = p.scrollHeight;
+                });
+            }
+            function clearEventLog() {
+                sseLogSeq = 0;
+                sseLogLines = [];
+                refreshEventPanelView();
+            }
 
             function parseFirstHeaderLine(headers) {
                 if (!headers || !Array.isArray(headers) || headers.length === 0) return null;
@@ -544,6 +607,7 @@
                 } else {
                     addRow(rid, display);
                 }
+                if (rid === selectedRid) populateDetail(rid);
             }
 
             function decodeBody(body) {
@@ -652,6 +716,29 @@
                     if (name) result.push({ name: name, value: value });
                 }
                 return result;
+            }
+            function compareCookieNameStrings(a, b) {
+                return String(a).localeCompare(String(b), undefined, { sensitivity: 'base' });
+            }
+            var MAX_COOKIE_NAME_DISPLAY_LEN = 32;
+            function setCookieLineFirstName(line) {
+                if (!line || typeof line !== 'string') return '';
+                var semi = line.indexOf(';');
+                var first = semi >= 0 ? line.substring(0, semi) : line;
+                var eq = first.indexOf('=');
+                return (eq >= 0 ? first.substring(0, eq) : first).trim();
+            }
+            function formatSetCookieLinePadded(line, maxNameLen) {
+                if (!line || typeof line !== 'string') return '  ';
+                var semi = line.indexOf(';');
+                var first = semi >= 0 ? line.substring(0, semi).trim() : line.trim();
+                var rest = semi >= 0 ? line.substring(semi) : '';
+                var eq = first.indexOf('=');
+                var name = eq >= 0 ? first.substring(0, eq).trim() : first;
+                var valuePart = eq >= 0 ? first.substring(eq + 1) : '';
+                var after = valuePart + rest;
+                if (!name) return '  ' + line;
+                return '  ' + name.padEnd(maxNameLen, ' ') + ' : ' + after;
             }
             function tryPrettyJson(str) {
                 if (!str || typeof str !== 'string') return str;
@@ -780,6 +867,7 @@
 
                 var headerLines = [];
                 headerLines.push('General');
+                headerLines.push('  Request ID: ' + rid);
                 headerLines.push('  Request URL: ' + (path.indexOf('://') >= 0 ? path : 'https://' + host + path));
                 headerLines.push('  Request Method: ' + method);
                 headerLines.push('  Status Code: ' + code);
@@ -797,19 +885,35 @@
 
                 var cookieLines = [];
                 var reqCookie = getHeaderValue(reqHeaders, 'Cookie');
-                if (reqCookie) {
+                var cookies = reqCookie ? parseCookies(reqCookie) : [];
+                cookies = cookies.filter(function(c) { return String(c.name).length <= MAX_COOKIE_NAME_DISPLAY_LEN; });
+                cookies.sort(function(x, y) { return compareCookieNameStrings(x.name, y.name); });
+                var setCookiesRaw = getAllHeaderValues(resHeaders, 'Set-Cookie');
+                var setCookies = (setCookiesRaw && setCookiesRaw.length > 0)
+                    ? setCookiesRaw.filter(function(line) {
+                        return setCookieLineFirstName(line).length <= MAX_COOKIE_NAME_DISPLAY_LEN;
+                    }).sort(function(a, b) {
+                        return compareCookieNameStrings(setCookieLineFirstName(a), setCookieLineFirstName(b));
+                    })
+                    : [];
+                var maxCookieNameLen = 0;
+                for (var ci = 0; ci < cookies.length; ci++) {
+                    maxCookieNameLen = Math.max(maxCookieNameLen, String(cookies[ci].name).length);
+                }
+                for (var sj = 0; sj < setCookies.length; sj++) {
+                    maxCookieNameLen = Math.max(maxCookieNameLen, setCookieLineFirstName(setCookies[sj]).length);
+                }
+                if (cookies.length > 0) {
                     cookieLines.push('Request Cookies');
-                    var cookies = parseCookies(reqCookie);
                     for (var k = 0; k < cookies.length; k++) {
-                        cookieLines.push('  ' + cookies[k].name + ': ' + cookies[k].value);
+                        cookieLines.push('  ' + String(cookies[k].name).padEnd(maxCookieNameLen, ' ') + ' : ' + cookies[k].value);
                     }
                 }
-                var setCookies = getAllHeaderValues(resHeaders, 'Set-Cookie');
-                if (setCookies && setCookies.length > 0) {
+                if (setCookies.length > 0) {
                     if (cookieLines.length) cookieLines.push('');
                     cookieLines.push('Response Set-Cookie');
                     for (var s = 0; s < setCookies.length; s++) {
-                        cookieLines.push('  ' + setCookies[s]);
+                        cookieLines.push(formatSetCookieLinePadded(setCookies[s], maxCookieNameLen));
                     }
                 }
                 panels.cookie.textContent = cookieLines.length ? cookieLines.join('\n') : '(No cookies)';
@@ -852,6 +956,7 @@
 
             var eventSource = new EventSource('/monitor/event');
             eventSource.onmessage = function(e) {
+                appendEventLog(e.data);
                 try {
                     var data = JSON.parse(e.data);
                     if (data.rid) upsertRow(data);

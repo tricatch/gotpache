@@ -36,7 +36,6 @@ public class PassResponseExecutor implements Stopable {
     @Override
     public void run() {
 
-        HeaderLines responseHeaders = new HeaderLines(HTTP.INIT_HEADER_LINES);
         int bytesRead;
 
         try {
@@ -48,6 +47,9 @@ public class PassResponseExecutor implements Stopable {
             }
 
             while(true) {
+
+                // Fresh buffer per response: queued HttpEvent serializes async; reusing one HeaderLines lets the next readHeaders(clear) wipe it first.
+                HeaderLines responseHeaders = new HeaderLines(HTTP.INIT_HEADER_LINES);
 
                 //read-res-header
                 bytesRead = serverIn.readHeaders(responseHeaders, HTTP.MAX_HEADER_LENGTH);

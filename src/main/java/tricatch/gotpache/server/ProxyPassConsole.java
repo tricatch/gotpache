@@ -53,8 +53,7 @@ public class ProxyPassConsole implements Runnable {
             String clazzName = this.getClass().getSimpleName();
             Console console = config.getConsole();
 
-            logger.info("{} running...", clazzName);
-            logger.info("{} port: {}", clazzName, console.getPort());
+            logger.info("{} running... port={}, http://localhost:{}", clazzName, console.getPort(), console.getPort());
 
             // Create HttpServer
             HttpServer server = HttpServer.create(new InetSocketAddress(console.getPort()), 0);

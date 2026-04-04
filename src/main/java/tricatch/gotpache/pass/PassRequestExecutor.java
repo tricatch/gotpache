@@ -17,6 +17,8 @@ import tricatch.gotpache.event.HttpEventType;
 import tricatch.gotpache.server.VThreadExecutor;
 import tricatch.gotpache.server.VirtualHosts;
 import tricatch.gotpache.server.VirtualPath;
+import tricatch.gotpache.exception.BadGatewayException;
+import tricatch.gotpache.util.HtmlUtil;
 import tricatch.gotpache.util.SocketUtils;
 import tricatch.gotpache.util.SysUtil;
 
@@ -178,9 +180,12 @@ public class PassRequestExecutor implements Stopable {
                     serverIn = new HttpStreamReader(serverSocket.getInputStream(), HTTP.BODY_BUFFER_SIZE);
                     serverOut = new HttpStreamWriter(serverSocket.getOutputStream());
 
+                    String tName = Thread.currentThread().getName();
+                    if( tName.endsWith("x0") ) tName = tName.substring(0, tName.length()-1) + reqCounter;
+
                     child =  VThreadExecutor.run(
                             new PassResponseExecutor(this, serverIn, clientOut)
-                            , Thread.currentThread().getName() + "x" + reqCounter
+                            , tName
                         );
 
                 }
@@ -212,6 +217,20 @@ public class PassRequestExecutor implements Stopable {
                 }
 
                 LockSupport.park();
+            }
+        } catch (BadGatewayException e) {
+            logger.error("{}, {}, Upstream connection failed: {}"
+                    , e.getRid()
+                    , HttpStream.Flow.REQ
+                    , e.getMessage()
+                    , e
+            );
+            try {
+                if (clientOut != null) {
+                    HtmlUtil.writeBadGatewayResponse(clientOut, e);
+                }
+            } catch (IOException io) {
+                logger.error("{}, Failed to write 502 response: {}", uid, io.getMessage(), io);
             }
         } catch (SocketTimeoutException e){
             logger.error( uid + ", " + e.getMessage());
@@ -310,7 +329,7 @@ public class PassRequestExecutor implements Stopable {
         return virtualPath;
     }
 
-    private Socket createServerSocket(String rid, String vhost, VirtualPath virtualPath) throws IOException {
+    private Socket createServerSocket(String rid, String vhost, VirtualPath virtualPath) throws BadGatewayException {
 
         if( logger.isDebugEnabled() ){
             logger.debug( "{}, {}, Create socket, vhost={}, uri={}"
@@ -323,28 +342,32 @@ public class PassRequestExecutor implements Stopable {
 
         URL target = virtualPath.getTarget();
 
-        if( "https".equals(target.getProtocol()) ){
-            int port = target.getPort() <= 0 ? 443 : target.getPort();
-            if( logger.isDebugEnabled() ){
-                logger.debug("{}, {}, Create HTTPS {}:{} / {}"
+        try {
+            if( "https".equals(target.getProtocol()) ){
+                int port = target.getPort() <= 0 ? 443 : target.getPort();
+                if( logger.isDebugEnabled() ){
+                    logger.debug("{}, {}, Create HTTPS {}:{} / {}"
+                            , rid
+                            , HttpStream.Flow.REQ
+                            , target.getHost()
+                            , port
+                            , vhost
+                    );
+                }
+                return SocketUtils.createHttps(vhost, target.getHost(), port, this.connectTimeout, this.readTimeout);
+            } else {
+                int port = target.getPort() <= 0 ? 80 : target.getPort();
+                if( logger.isDebugEnabled() ) logger.debug("{}, {}, Create HTTP {}:{} / {}"
                         , rid
                         , HttpStream.Flow.REQ
                         , target.getHost()
                         , port
                         , vhost
                 );
+                return SocketUtils.createHttp(target.getHost(), port, this.connectTimeout, this.readTimeout);
             }
-            return SocketUtils.createHttps(vhost, target.getHost(), port, this.connectTimeout, this.readTimeout);
-        } else {
-            int port = target.getPort() <= 0 ? 80 : target.getPort();
-            if( logger.isDebugEnabled() ) logger.debug("{}, {}, Create HTTP {}:{} / {}"
-                    , rid
-                    , HttpStream.Flow.REQ
-                    , target.getHost()
-                    , port
-                    , vhost
-            );
-            return SocketUtils.createHttp(target.getHost(), port, this.connectTimeout, this.readTimeout);
+        } catch (IOException e) {
+            throw new BadGatewayException(rid, vhost, target, virtualPath.getPath(), e);
         }
     }
 
