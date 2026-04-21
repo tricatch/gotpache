@@ -1,1 +1,1 @@
-java -cp .;./libs/*; tricatch.gotpache.ProxyPassServer
+java -Djava.net.preferIPv4Stack=true -cp .;./libs/*; tricatch.gotpache.ProxyPassServer

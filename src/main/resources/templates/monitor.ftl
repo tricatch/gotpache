@@ -101,7 +101,7 @@
         .log-table tbody tr:hover { background: #f8f9fa; }
         .log-table tbody tr.active { background: #e8f0fe; }
         .log-table .col-method { font-family: monospace; font-size: 12px; color: #5f6368; white-space: nowrap; }
-        .log-table .col-host { font-size: 12px; max-width: 120px; overflow: hidden; text-overflow: ellipsis; color: #5f6368; }
+        .log-table .col-host { font-size: 12px; max-width: 120px; overflow: hidden; text-overflow: ellipsis; color: #5f6368; white-space: nowrap; }
         .log-table .col-path { font-family: monospace; font-size: 12px; overflow: hidden; text-overflow: ellipsis; }
         .log-table .col-start { font-size: 12px; color: #5f6368; white-space: nowrap; }
         .log-table .col-duration { font-size: 12px; color: #5f6368; white-space: nowrap; }
@@ -483,11 +483,22 @@
             function findRowByRid(rid) {
                 return logTbody ? logTbody.querySelector('tr[data-rid="' + rid + '"]') : null;
             }
+            /** Path 컬럼: 쿼리 없으면 길이 제한 없음. ? 포함 전체가 100자 초과일 때만 ... */
+            function formatPathForColumn(path) {
+                if (path == null || path === '') return '/';
+                var s = String(path);
+                if (s === '-') return '-';
+                if (s.indexOf('?') < 0) return s;
+                if (s.length <= 100) return s;
+                return s.substring(0, 97) + '...';
+            }
             function buildDisplay(rowData) {
+                var pathFull = rowData.path || '/';
                 return {
                     method: rowData.method || '-',
                     host: rowData.host || '-',
-                    path: rowData.path || '/',
+                    path: formatPathForColumn(pathFull),
+                    pathFull: pathFull,
                     start: formatStart(rowData.startTs),
                     duration: formatTime(rowData.timeMs),
                     code: rowData.code || '-',
@@ -499,7 +510,7 @@
                 tr.setAttribute('data-rid', rid);
                 tr.innerHTML = '<td class="col-method">' + escapeHtml(display.method) + '</td>' +
                     '<td class="col-host">' + escapeHtml(display.host) + '</td>' +
-                    '<td class="col-path">' + escapeHtml(display.path) + '</td>' +
+                    '<td class="col-path" title="' + escapeHtml(display.pathFull) + '">' + escapeHtml(display.path) + '</td>' +
                     '<td class="col-start">' + escapeHtml(display.start) + '</td>' +
                     '<td class="col-duration">' + escapeHtml(display.duration) + '</td>' +
                     '<td class="col-code">' + escapeHtml(display.code) + '</td>' +
@@ -527,7 +538,9 @@
                 if (!row) return;
                 row.querySelector('.col-method').textContent = display.method;
                 row.querySelector('.col-host').textContent = display.host;
-                row.querySelector('.col-path').textContent = display.path;
+                var pathCell = row.querySelector('.col-path');
+                pathCell.textContent = display.path;
+                pathCell.setAttribute('title', display.pathFull);
                 row.querySelector('.col-start').textContent = display.start;
                 row.querySelector('.col-duration').textContent = display.duration;
                 row.querySelector('.col-code').textContent = display.code;

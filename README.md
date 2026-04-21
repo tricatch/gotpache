@@ -11,6 +11,8 @@ apache/nginx의 복잡한 기능을 가지고 있지 않지만, ProxyPass와 유
 
 ### Release Note
 
+#### v0.8.3
+* Monitor UI 개선
 
 #### v0.8.2
 * Monitor 로그누락 오류 수정
