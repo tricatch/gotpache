@@ -9,6 +9,9 @@ apache/nginx의 복잡한 기능을 가지고 있지 않지만, ProxyPass와 유
 또한 최근 HTTPS를 적용하면서 강화되는 samesite와 같은 보안 이슈를 gotpache를 통해 간단하게 구성하고 테스트할 수 있습니다. 
 <br>
 
+### Codewiki
+* https://codewiki.google/github.com/tricatch/gotpache
+
 ### Release Note
 
 #### v0.8.3
