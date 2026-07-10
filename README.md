@@ -1,6 +1,6 @@
 
 <br>
-> ⚠️ gotpache는 **[oeHub](https://github.com/tricatch/oeHub)**에 통합되어 oeProxy로 지원됩니다.
+> ⚠️ gotpache는 **oeHub**에 통합되어 oeProxy로 지원됩니다.
 <br>
 <br>
 
